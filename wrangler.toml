@@ -1,0 +1,24 @@
+name = "vless-sub"
+main = "adapters/cloudflare.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── KV Namespace ──────────────────────────────────────────────────────────────
+# 1. Run: wrangler kv namespace create VLESS_KV
+# 2. Paste the returned id below
+[[kv_namespaces]]
+binding = "VLESS_KV"
+id = "REPLACE_WITH_YOUR_KV_ID"
+
+# ── Environment Variables ─────────────────────────────────────────────────────
+# Secrets should be set via: wrangler secret put ADMIN_PASSWORD
+# Not hard-coded here for security.
+#
+# Optional vars (safe to put in wrangler.toml):
+# [vars]
+# SUB_TOKEN   = "your-random-token-here"
+# VLESS_NODES = "vless://...#node1|vless://...#node2"
+
+# ── Production environment ────────────────────────────────────────────────────
+[env.production]
+name = "vless-sub-prod"
