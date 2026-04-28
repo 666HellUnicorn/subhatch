@@ -1,3 +1,8 @@
+<p align="right">
+  <a href="README.md">English</a> |
+  <a href="README_zh-CN.md">简体中文</a>
+</p>
+
 # vless-sub
 
 A lightweight, self-hosted subscription manager for proxy nodes.  
