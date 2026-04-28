@@ -14,7 +14,7 @@
 
 export const runtime = "edge";
 
-import { handleRequest } from "../../src/core.js";
+import { handleRequest } from "../src/core.js";
 
 /**
  * Vercel KV REST adapter
