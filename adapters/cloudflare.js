@@ -19,43 +19,43 @@ import { handleRequest } from "../src/core.js";
  * Wraps the Workers KV API into the generic store interface.
  */
 function makeKVStore(kv) {
-  return {
-    async get(key) {
-      return kv.get(key); // returns string | null
-    },
-    async set(key, value, ttlSeconds) {
-      const opts = ttlSeconds
-        ? { expirationTtl: Math.ceil(ttlSeconds) }
-        : undefined;
-      return kv.put(key, value, opts);
-    },
-    async del(key) {
-      return kv.delete(key);
-    },
-  };
+	return {
+		async get(key) {
+			return kv.get(key); // returns string | null
+		},
+		async set(key, value, ttlSeconds) {
+			const opts = ttlSeconds
+				? { expirationTtl: Math.ceil(ttlSeconds) }
+				: undefined;
+			return kv.put(key, value, opts);
+		},
+		async del(key) {
+			return kv.delete(key);
+		},
+	};
 }
 
 export default {
-  async fetch(request, env) {
-    if (!env.VLESS_KV) {
-      return new Response(
-        'KV namespace "VLESS_KV" is not bound. Check your wrangler.toml.',
-        { status: 500 },
-      );
-    }
-    if (!env.ADMIN_PASSWORD) {
-      return new Response("Environment variable ADMIN_PASSWORD is not set.", {
-        status: 500,
-      });
-    }
+	async fetch(request, env) {
+		if (!env.VLESS_KV) {
+			return new Response(
+				'KV namespace "VLESS_KV" is not bound. Check your wrangler.toml.',
+				{ status: 500 },
+			);
+		}
+		if (!env.ADMIN_PASSWORD) {
+			return new Response("Environment variable ADMIN_PASSWORD is not set.", {
+				status: 500,
+			});
+		}
 
-    const normalizedEnv = {
-      ADMIN_PASSWORD: env.ADMIN_PASSWORD,
-      SUB_TOKEN: env.SUB_TOKEN || "",
-      VLESS_NODES: env.VLESS_NODES || "",
-      store: makeKVStore(env.VLESS_KV),
-    };
+		const normalizedEnv = {
+			ADMIN_PASSWORD: env.ADMIN_PASSWORD,
+			SUB_TOKEN: env.SUB_TOKEN || "",
+			VLESS_NODES: env.VLESS_NODES || "",
+			store: makeKVStore(env.VLESS_KV),
+		};
 
-    return handleRequest(request, normalizedEnv);
-  },
+		return handleRequest(request, normalizedEnv);
+	},
 };
