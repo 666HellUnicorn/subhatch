@@ -48,18 +48,21 @@ wrangler login
 
 # 2. 创建 KV 命名空间
 wrangler kv namespace create VLESS_KV
-# → 将返回的 id 填入 wrangler.toml
+# → 将 wrangler.toml.example 复制为 wrangler.toml 并填入 id
 
-# 3. 设置密钥
+# 3. 部署（创建 Worker；设置 secret 前会返回 500）
+wrangler deploy api/cloudflare.js
+
+# 4. 设置密钥
 wrangler secret put ADMIN_PASSWORD
 wrangler secret put SUB_TOKEN        # 可选，但强烈建议
 
-# 4. （可选）通过环境变量添加固定节点
+# 5. （可选）通过环境变量添加固定节点
 # 在 wrangler.toml 的 [vars] 中：
 # VLESS_NODES = "vless://...#MyNode1|vmess://...#MyNode2"
 
-# 5. 部署
-wrangler deploy adapters/cloudflare.js
+# 6. 重新部署使密钥生效
+wrangler deploy api/cloudflare.js
 ```
 
 访问 `https://your-worker.workers.dev` → 登录 → 管理节点。

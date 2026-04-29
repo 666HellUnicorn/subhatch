@@ -19,10 +19,12 @@
       in {
         default = pkgs.mkShell {
           buildInputs = with pkgs; [
-            wrangler
+            bun
           ];
           shellHook = ''
-            bun add -g vercel
+            export PATH="/home/dich/.cache/.bun/bin:$PATH"
+            command -v vercel  || bun add -g vercel
+            command -v wrangler || bun add -g wrangler
             export PATH="/home/dich/.cache/.bun/bin:$PATH"
           '';
         };

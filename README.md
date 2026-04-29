@@ -47,18 +47,21 @@ wrangler login
 
 # 2. Create KV namespace
 wrangler kv namespace create VLESS_KV
-# → copy the returned id into wrangler.toml
+# → copy wrangler.toml.example to wrangler.toml and paste your id
 
-# 3. Set secrets
+# 3. Deploy (creates the Worker; will 500 until secrets are set)
+wrangler deploy api/cloudflare.js
+
+# 4. Set secrets
 wrangler secret put ADMIN_PASSWORD
 wrangler secret put SUB_TOKEN        # optional but recommended
 
-# 4. (Optional) static nodes via env var
+# 5. (Optional) static nodes via env var
 # In wrangler.toml [vars]:
 # VLESS_NODES = "vless://...#MyNode1|vmess://...#MyNode2"
 
-# 5. Deploy
-wrangler deploy adapters/cloudflare.js
+# 6. Redeploy to apply secrets
+wrangler deploy api/cloudflare.js
 ```
 
 Visit `https://your-worker.workers.dev` → login → manage nodes.

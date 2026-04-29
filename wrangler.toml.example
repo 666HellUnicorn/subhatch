@@ -18,7 +18,3 @@ id = "REPLACE_WITH_YOUR_KV_ID"
 # [vars]
 # SUB_TOKEN   = "your-random-token-here"
 # VLESS_NODES = "vless://...#node1|vless://...#node2"
-
-# ── Production environment ────────────────────────────────────────────────────
-[env.production]
-name = "vless-sub-prod"
