@@ -6,7 +6,12 @@
 # Subhatch
 
 轻量级、自托管的代理节点订阅管理器。
+
 支持 **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**。
+
+<p align="center">
+  <img src="https://github.com/Dichgrem/subhatch/blob/main/example.png" width="700">
+</p>
 
 ---
 

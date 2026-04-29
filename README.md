@@ -6,7 +6,12 @@
 # Subhatch
 
 A lightweight, self-hosted subscription manager for proxy nodes.
+
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
+
+<p align="center">
+  <img src="https://github.com/Dichgrem/subhatch/blob/main/example.png" width="700">
+</p>
 
 ---
 
