@@ -6,7 +6,12 @@
 # Subhatch
 
 轻量级、自托管的代理节点订阅管理器。
+
 支持 **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**。
+
+<p align="center">
+  <img src="https://github.com/Dichgrem/subhatch/blob/main/example.png" width="700">
+</p>
 
 ---
 
@@ -44,6 +49,7 @@ wrangler kv namespace create VLESS_KV
 
 # 4. 部署（创建 Worker；设置 secret 前会返回 500）
 wrangler deploy api/cloudflare.js
+# 注意Cloudflare需要绑定邮箱并开启worker
 
 # 5. 设置密钥
 wrangler secret put ADMIN_PASSWORD

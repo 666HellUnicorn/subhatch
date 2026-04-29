@@ -6,7 +6,12 @@
 # Subhatch
 
 A lightweight, self-hosted subscription manager for proxy nodes.
+
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
+
+<p align="center">
+  <img src="https://github.com/Dichgrem/subhatch/blob/main/example.png" width="700">
+</p>
 
 ---
 
@@ -44,6 +49,7 @@ wrangler kv namespace create VLESS_KV
 
 # 4. Deploy (creates the Worker; will 500 until secrets are set)
 wrangler deploy api/cloudflare.js
+# Note that Cloudflare requires you to link your email and enable workers.
 
 # 5. Set secrets
 wrangler secret put ADMIN_PASSWORD

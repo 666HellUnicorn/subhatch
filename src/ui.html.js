@@ -247,6 +247,12 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
   .add-area{flex-direction:column}
   .stats{flex-wrap:wrap;gap:10px}
 }
+
+/* ── hide sensitive ── */
+.hide-sensitive .node-name{position:relative;overflow:hidden;text-indent:100%;white-space:nowrap}
+.hide-sensitive .node-name::after{content:'•••••••';position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--muted);letter-spacing:4px;text-indent:0}
+.hide-sensitive #sub-url-text{position:relative}
+.hide-sensitive #sub-url-text::before{content:'Hidden for screenshot';position:absolute;inset:0;display:flex;align-items:center;color:var(--muted);font-style:italic;background:var(--s0);border-radius:6px}
 </style>
 </head>
 <body>
@@ -281,6 +287,7 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
       </div>
       <div class="topbar-right">
         <span class="user-dot"></span>
+        <button class="btn btn-ghost btn-sm" id="hide-btn" onclick="toggleHide()">Hide</button>
         <button class="btn btn-ghost btn-sm" onclick="doLogout()">Logout</button>
       </div>
     </div>
@@ -612,6 +619,13 @@ async function openQR() {
     colorDark: '#1a1a2e', colorLight: '#ffffff',
   });
   document.getElementById('qr-bg').style.display = 'flex';
+}
+
+// ── Hide sensitive ──
+function toggleHide() {
+  const btn = document.getElementById('hide-btn');
+  document.body.classList.toggle('hide-sensitive');
+  btn.textContent = document.body.classList.contains('hide-sensitive') ? 'Show' : 'Hide';
 }
 
 // ── Toast ──
