@@ -34,4 +34,107 @@ docker-stop:
 
 # clean generated files
 clean:
-    rm -f data.json
+	rm -f data.json
+
+# ─────────────────────────────────────────────
+#  API tests (requires "just run" in another tab)
+#  Default credentials: ADMIN_PASSWORD=admin SUB_TOKEN=test
+# ─────────────────────────────────────────────
+
+BASE := "http://localhost:3000"
+PW := "admin"
+SUB := "test"
+
+# run all test recipes
+test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-sub test-logout
+
+# GET /api/ping — health check
+test-ping:
+	curl -s {{BASE}}/api/ping | jq
+
+# POST /api/login — correct password
+test-login:
+	#!/usr/bin/env bash
+	curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq
+
+# POST /api/login — wrong password
+test-login-wrong:
+	#!/usr/bin/env bash
+	curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"wrong"}' | jq
+
+# GET /api/nodes — list all nodes
+test-get-nodes:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s {{BASE}}/api/nodes -H "Authorization: Bearer $TOKEN" | jq
+
+# PUT /api/nodes — save nodes
+test-save-nodes:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s -X PUT {{BASE}}/api/nodes \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $TOKEN" \
+		-d '{"nodes":["vless://abc-def@1.2.3.4:443?encryption=none#Tokyo","vmess://YmFzZTY0"]}' | jq
+
+# GET /sub — subscription content
+test-sub:
+	curl -s "{{BASE}}/sub?token={{SUB}}"
+
+# GET /api/sub-url — subscription URL
+test-sub-url:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s {{BASE}}/api/sub-url -H "Authorization: Bearer $TOKEN" | jq
+
+# POST /api/logout — end session
+test-logout:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq
+
+# full integration test
+test-full:
+	#!/usr/bin/env bash
+	set -e
+	echo "=== Health check ==="
+	curl -s {{BASE}}/api/ping | jq
+	echo ""
+	echo "=== Login ==="
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	echo "Token: $TOKEN"
+	echo ""
+	echo "=== Save nodes ==="
+	curl -s -X PUT {{BASE}}/api/nodes \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $TOKEN" \
+		-d '{"nodes":["vless://abc-def@1.2.3.4:443?encryption=none#Tokyo","vmess://YmFzZTY0"]}' | jq
+	echo ""
+	echo "=== List nodes ==="
+	curl -s {{BASE}}/api/nodes -H "Authorization: Bearer $TOKEN" | jq
+	echo ""
+	echo "=== Sub URL ==="
+	curl -s {{BASE}}/api/sub-url -H "Authorization: Bearer $TOKEN" | jq
+	echo ""
+	echo "=== Get subscription ==="
+	curl -s "{{BASE}}/sub?token={{SUB}}"
+	echo ""
+	echo ""
+	echo "=== Logout ==="
+	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq
+	echo ""
+	echo "Done."
