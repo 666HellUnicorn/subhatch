@@ -95,7 +95,7 @@ vercel --prod
 
 **直接运行 Node.js：**
 ```bash
-ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node adapters/node.js
+ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node api/node.js
 # 监听 :3000 端口
 ```
 

@@ -94,7 +94,7 @@ vercel --prod
 
 **Direct Node.js:**
 ```bash
-ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node adapters/node.js
+ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node api/node.js
 # Listens on :3000
 ```
 

@@ -5,7 +5,7 @@
  * For production self-hosting, swap makeFileStore() with makeRedisStore().
  *
  * Usage:
- *   ADMIN_PASSWORD=changeme SUB_TOKEN=mysecret node adapters/node.js
+ *   ADMIN_PASSWORD=changeme SUB_TOKEN=mysecret node api/node.js
  *
  * Environment variables:
  *   ADMIN_PASSWORD   — required

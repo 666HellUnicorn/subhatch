@@ -25,7 +25,7 @@
 		"node": ">=18"
 	},
 	"scripts": {
-		"start": "node adapters/node.js",
+		"start": "node api/node.js",
 		"test": "echo \"No tests yet\" && exit 0"
 	}
 }
