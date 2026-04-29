@@ -1,8 +1,8 @@
 {
 	"type": "module",
-	"name": "vless-sub",
+	"name": "subhatch",
 	"version": "1.0.0",
-	"description": "Lightweight self-hosted proxy subscription manager. Multi-platform: Cloudflare Workers, Vercel, Netlify, Node.js, Docker.",
+	"description": "Lightweight self-hosted proxy subscription manager. Multi-platform: Cloudflare Workers, Vercel, Node.js, Docker.",
 	"license": "BSD 3-Clause License",
 	"keywords": [
 		"vless",
@@ -14,8 +14,7 @@
 		"subscription",
 		"proxy",
 		"cloudflare-workers",
-		"vercel",
-		"netlify"
+		"vercel"
 	],
 	"repository": {
 		"type": "git",

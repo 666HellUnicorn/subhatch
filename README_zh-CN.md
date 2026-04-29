@@ -4,17 +4,15 @@
 </p>
 
 
-# vless-sub
+# Subhatch
 
 轻量级、自托管的代理节点订阅管理器。
 
 支持 **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=vless-sub&repository-name=subhatch)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Dichgrem/subhatch)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=subhatch&repository-name=subhatch)
 
-> **Vercel**：部署后在 Vercel 控制台创建 KV 存储并关联；按钮会自动预填 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
-> **Netlify**：以 Serverless Function 方式部署。在 Netlify 后台设置 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。使用内存存储，适合个人使用。
+> **Vercel**：点击按钮部署后，还需在 Vercel 控制台创建 KV 数据库，将其 `KV_REST_API_URL` 和 `KV_REST_API_TOKEN` 添加为环境变量，然后重新部署。按钮仅预填了 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
 
 ---
 
@@ -71,23 +69,38 @@ wrangler deploy api/cloudflare.js
 
 ### 方案 B — Vercel Edge（免费）
 
+点击页面顶部的 **Deploy with Vercel** 一键部署，或手动操作：
+
 ```bash
 # 1. 安装 Vercel CLI
 npm install -g vercel
+vercel login
 
-# 2. 在 Vercel 控制台创建 KV 数据库
-#    Settings → Storage → Create KV → 复制环境变量
+# 2. 创建 Vercel KV 数据库
+#    Vercel 控制台 → 你的项目 → Storage → Create Database → KV
+#    复制 REST API URL 和 token：
+#      KV_REST_API_URL   = https://<region>.kv.vercel-storage.com
+#      KV_REST_API_TOKEN = Axxx_xxxxxxxxxxxxxxxxxxxxx
 
-# 3. 在 Vercel 控制台设置环境变量：
-#    ADMIN_PASSWORD   （必填）
-#    SUB_TOKEN        （可选）
-#    VLESS_NODES      （可选）
-#    KV_REST_API_URL  （来自 Vercel KV）
-#    KV_REST_API_TOKEN（来自 Vercel KV）
+# 3. 设置环境变量
+vercel env add ADMIN_PASSWORD
+# → 输入管理员密码
+vercel env add SUB_TOKEN
+# → 输入随机密钥（可选，但强烈建议）
+vercel env add KV_REST_API_URL
+# → 粘贴步骤 2 中的 URL
+vercel env add KV_REST_API_TOKEN
+# → 粘贴步骤 2 中的 token
 
-# 4. 部署
+# 4. （可选）固定节点
+vercel env add VLESS_NODES
+# → 例如 "vless://...#node1|vmess://...#node2"
+
+# 5. 部署
 vercel --prod
 ```
+
+访问 `https://your-project.vercel.app` → 登录 → 管理节点。
 
 ---
 
@@ -101,21 +114,21 @@ ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node api/node.js
 
 **Docker：**
 ```bash
-docker build -t vless-sub .
+docker build -t subhatch .
 
 docker run -d \
   -p 3000:3000 \
-  -v vless-data:/data \
+  -v subhatch-data:/data \
   -e ADMIN_PASSWORD=your_strong_password \
   -e SUB_TOKEN=your_random_token \
-  --name vless-sub \
-  vless-sub
+  --name subhatch \
+  subhatch
 ```
 
 **Docker Compose：**
 ```yaml
 services:
-  vless-sub:
+  subhatch:
     build: .
     ports:
       - "3000:3000"
@@ -134,7 +147,7 @@ services:
 ## 项目结构
 
 ```
-vless-sub/
+subhatch/
 ├── src/
 │   ├── core.js           # 平台无关业务逻辑
 │   └── ui.html.js        # Web UI HTML 模板
@@ -142,15 +155,11 @@ vless-sub/
 │   ├── cloudflare.js     # Cloudflare Workers 入口
 │   ├── vercel.js         # Vercel Edge 入口
 │   ├── node.js           # Node.js HTTP 服务器
-│   ├── netlify.js        # Netlify Functions 入口
 │   └── index.js          # Vercel 重新导出
-├── netlify/
-│   └── functions/
-│       └── api.js        # 轻量重导出 → api/netlify.js
-├── netlify.toml          # Netlify 配置
-├── wrangler.toml         # Cloudflare Workers 配置
+├── wrangler.toml.example # Cloudflare Workers 配置模板
 ├── vercel.json           # Vercel 路由配置
 ├── Dockerfile
+├── docker-compose.yml
 ├── justfile              # 开发命令
 └── package.json
 ```

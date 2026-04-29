@@ -1,4 +1,4 @@
-# vless-sub development commands
+# subhatch development commands
 
 default:
     @just --list
@@ -21,16 +21,16 @@ run:
 
 # build Docker image
 docker-build:
-    docker build -t vless-sub .
+    docker build -t subhatch .
 
 # run Docker container (needs ADMIN_PASSWORD set or passed)
 docker-run:
-    docker run -d --name vless-sub -p 3000:3000 -v vless-data:/data -e ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD} -e SUB_TOKEN=${SUB_TOKEN:-} --restart unless-stopped vless-sub
+    docker run -d --name subhatch -p 3000:3000 -v subhatch-data:/data -e ADMIN_PASSWORD=${ADMIN_PASSWORD:?set ADMIN_PASSWORD} -e SUB_TOKEN=${SUB_TOKEN:-} --restart unless-stopped subhatch
 
 # stop and remove Docker container
 docker-stop:
-    docker stop vless-sub || true
-    docker rm vless-sub || true
+    docker stop subhatch || true
+    docker rm subhatch || true
 
 # clean generated files
 clean:

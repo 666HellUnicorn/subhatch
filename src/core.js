@@ -1,5 +1,5 @@
 /**
- * vless-sub — Core Logic
+ * subhatch — Core Logic
  * Platform-agnostic. All handlers receive a normalized Env object.
  */
 

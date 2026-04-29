@@ -106,7 +106,7 @@ const { ADMIN_PASSWORD, SUB_TOKEN, VLESS_NODES, PORT = "3000" } = process.env;
 
 if (!ADMIN_PASSWORD) {
 	console.error(
-		"[vless-sub] ERROR: ADMIN_PASSWORD environment variable is not set.",
+		"[subhatch] ERROR: ADMIN_PASSWORD environment variable is not set.",
 	);
 	process.exit(1);
 }
@@ -142,15 +142,15 @@ const server = http.createServer(async (req, res) => {
 		const buf = await webRes.arrayBuffer();
 		res.end(Buffer.from(buf));
 	} catch (err) {
-		console.error("[vless-sub] Unhandled error:", err);
+		console.error("[subhatch] Unhandled error:", err);
 		res.writeHead(500, { "Content-Type": "text/plain" });
 		res.end("Internal Server Error");
 	}
 });
 
 server.listen(Number(PORT), () => {
-	console.log(`[vless-sub] Listening on http://0.0.0.0:${PORT}`);
+	console.log(`[subhatch] Listening on http://0.0.0.0:${PORT}`);
 	console.log(
-		`[vless-sub] Sub URL: http://0.0.0.0:${PORT}/sub${SUB_TOKEN ? `?token=${SUB_TOKEN}` : ""}`,
+		`[subhatch] Sub URL: http://0.0.0.0:${PORT}/sub${SUB_TOKEN ? `?token=${SUB_TOKEN}` : ""}`,
 	);
 });

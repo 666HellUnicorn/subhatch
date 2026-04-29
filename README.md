@@ -3,17 +3,15 @@
   <a href="README_zh-CN.md">简体中文</a>
 </p>
 
-# vless-sub
+# Subhatch
 
 A lightweight, self-hosted subscription manager for proxy nodes.
 
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=vless-sub&repository-name=subhatch)
-[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Dichgrem/subhatch)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=subhatch&repository-name=subhatch)
 
-> **Vercel**: After deploy, create a Vercel KV store in the dashboard and link it — the button auto-fills `ADMIN_PASSWORD` + `SUB_TOKEN`.  
-> **Netlify**: Deploys as a serverless function. Set `ADMIN_PASSWORD` and `SUB_TOKEN` in the Netlify UI. Uses in-memory storage — suitable for personal use.
+> **Vercel**：点击按钮部署后，还需在 Vercel 控制台创建 KV 数据库，将其 `KV_REST_API_URL` 和 `KV_REST_API_TOKEN` 添加为环境变量，然后重新部署。按钮仅预填了 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
 
 ---
 
@@ -70,23 +68,38 @@ Visit `https://your-worker.workers.dev` → login → manage nodes.
 
 ### Option B — Vercel Edge (free)
 
+Click the **Deploy with Vercel** button at the top of this README, or:
+
 ```bash
 # 1. Install Vercel CLI
 npm install -g vercel
+vercel login
 
-# 2. Create a Vercel KV database in the dashboard
-#    Settings → Storage → Create KV → copy the env vars
+# 2. Create a Vercel KV database
+#    Go to Vercel dashboard → your project → Storage → Create Database → KV
+#    Copy the REST API URL and token:
+#      KV_REST_API_URL   = https://<region>.kv.vercel-storage.com
+#      KV_REST_API_TOKEN = Axxx_xxxxxxxxxxxxxxxxxxxxx
 
-# 3. Set environment variables in Vercel dashboard:
-#    ADMIN_PASSWORD   (required)
-#    SUB_TOKEN        (optional)
-#    VLESS_NODES      (optional)
-#    KV_REST_API_URL  (from Vercel KV)
-#    KV_REST_API_TOKEN(from Vercel KV)
+# 3. Set environment variables
+vercel env add ADMIN_PASSWORD
+# → enter your admin password
+vercel env add SUB_TOKEN
+# → enter a random secret (optional but recommended)
+vercel env add KV_REST_API_URL
+# → paste from step 2
+vercel env add KV_REST_API_TOKEN
+# → paste from step 2
 
-# 4. Deploy
+# 4. (Optional) static nodes
+vercel env add VLESS_NODES
+# → e.g. "vless://...#node1|vmess://...#node2"
+
+# 5. Deploy
 vercel --prod
 ```
+
+Visit `https://your-project.vercel.app` → login → manage nodes.
 
 ---
 
@@ -100,21 +113,21 @@ ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node api/node.js
 
 **Docker:**
 ```bash
-docker build -t vless-sub .
+docker build -t subhatch .
 
 docker run -d \
   -p 3000:3000 \
-  -v vless-data:/data \
+  -v subhatch-data:/data \
   -e ADMIN_PASSWORD=your_strong_password \
   -e SUB_TOKEN=your_random_token \
-  --name vless-sub \
-  vless-sub
+  --name subhatch \
+  subhatch
 ```
 
 **Docker Compose:**
 ```yaml
 services:
-  vless-sub:
+  subhatch:
     build: .
     ports:
       - "3000:3000"
@@ -132,7 +145,7 @@ services:
 ## Project Structure
 
 ```
-vless-sub/
+subhatch/
 ├── src/
 │   ├── core.js           # Platform-agnostic business logic
 │   └── ui.html.js        # Web UI HTML template
@@ -140,15 +153,11 @@ vless-sub/
 │   ├── cloudflare.js     # Cloudflare Workers entry
 │   ├── vercel.js         # Vercel Edge entry
 │   ├── node.js           # Node.js HTTP server
-│   ├── netlify.js        # Netlify Functions entry
 │   └── index.js          # Vercel re-export
-├── netlify/
-│   └── functions/
-│       └── api.js        # Thin re-export → api/netlify.js
-├── netlify.toml          # Netlify config
-├── wrangler.toml         # Cloudflare Workers config
+├── wrangler.toml.example # Cloudflare Workers config template
 ├── vercel.json           # Vercel routing config
 ├── Dockerfile
+├── docker-compose.yml
 ├── justfile              # Dev commands
 └── package.json
 ```
