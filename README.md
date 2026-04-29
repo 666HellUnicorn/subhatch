@@ -6,7 +6,6 @@
 # Subhatch
 
 A lightweight, self-hosted subscription manager for proxy nodes.
-
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 
 ---
@@ -21,18 +20,14 @@ Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 - **Bulk import** — paste raw URIs or base64-encoded subscription content
 - **QR code** — scan subscription URL directly from the UI
 - **Zero dependencies** — plain ES Modules, no npm install needed
-- **ADMIN_PASSWORD** can be a pre-computed SHA-256 hex string (64 hex chars) to avoid plaintext storage — or set the raw password directly.
-- **Sessions** are random 32-byte hex tokens stored in KV with a 2-hour TTL.
-- **Brute-force protection**: after 10 failed login attempts from the same IP within 15 minutes, further attempts are blocked for the duration of the window.
-- **SUB_TOKEN** makes your subscription URL unguessable. Without it, `/sub` is public.
-- **Env-var nodes** (`VLESS_NODES`) are never written to KV — they live only in the runtime environment.
-- Sessions are stored client-side in `localStorage` and sent as a `Bearer` token — not stored in cookies, avoiding CSRF surface.
+- **Pre-hashed passwords** — supports SHA-256 hex strings for zero-plaintext deployment
+- **CSRF-safe** — sessions in localStorage as Bearer tokens, not cookies
 
 ---
 
 ## Quick Start
 
-### Option A — Cloudflare Workers (recommended, free)
+### Cloudflare Workers (recommended, free)
 
 ```bash
 # 1. Clone and enter the project
@@ -62,11 +57,7 @@ wrangler secret put SUB_TOKEN        # optional but recommended
 wrangler deploy api/cloudflare.js
 ```
 
-Visit `https://your-worker.workers.dev` → login → manage nodes.
-
----
-
-### Option B — Node.js / Docker (self-hosted VPS)
+### Node.js / Docker
 
 **Direct Node.js:**
 ```bash
@@ -77,74 +68,22 @@ ADMIN_PASSWORD=changeme SUB_TOKEN=mytoken node api/node.js
 **Docker:**
 ```bash
 docker build -t subhatch .
-
-docker run -d \
-  -p 3000:3000 \
-  -v subhatch-data:/data \
+docker run -d -p 3000:3000 -v subhatch-data:/data \
   -e ADMIN_PASSWORD=your_strong_password \
   -e SUB_TOKEN=your_random_token \
-  --name subhatch \
-  subhatch
+  --name subhatch subhatch
 ```
 
-**Docker Compose:**
-```yaml
-services:
-  subhatch:
-    build: .
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data:/data
-    environment:
-      - ADMIN_PASSWORD=your_strong_password
-      - SUB_TOKEN=your_random_token
-      - VLESS_NODES=vless://...#node1|vmess://...#node2
-    restart: unless-stopped
-```
+**Docker Compose:** `docker compose up -d`
 
 ---
 
-## Project Structure
+## Documentation
 
-```
-subhatch/
-├── src/
-│   ├── core.js           # Platform-agnostic business logic
-│   └── ui.html.js        # Web UI HTML template
-├── api/
-│   ├── cloudflare.js     # Cloudflare Workers entry
-│   └── node.js           # Node.js HTTP server
-├── wrangler.toml.example # Cloudflare Workers config template
-├── Dockerfile
-├── docker-compose.yml
-├── justfile              # Dev commands
-└── package.json
-```
-
----
-
-## Environment Variables
-
-| Variable        | Required | Description                                                |
-|-----------------|----------|------------------------------------------------------------|
-| `ADMIN_PASSWORD`| ✅ Yes   | Password for the Web UI admin login                        |
-| `SUB_TOKEN`     | No       | Secret token required to access `/sub`. Highly recommended |
-| `VLESS_NODES`   | No       | Static nodes (pipe `\|` or newline separated). Read-only in UI |
-| `PORT`          | No       | Node.js only. Default: `3000`                              |
-| `DATA_FILE`     | No       | Node.js only. Path to JSON store. Default: `./data.json`   |
-
----
-
-## API Reference
-
-| Method | Path           | Auth          | Description                        |
-|--------|----------------|---------------|------------------------------------|
-| GET    | `/`            | —             | Web UI                             |
-| GET    | `/sub`         | token (opt.)  | Base64 subscription content        |
-| POST   | `/api/login`   | password      | Returns session token              |
-| POST   | `/api/logout`  | session       | Invalidates session                |
-| GET    | `/api/nodes`   | session       | List env + stored nodes            |
-| PUT    | `/api/nodes`   | session       | Save stored nodes (replaces all)   |
-| GET    | `/api/sub-url` | session       | Returns the full subscription URL  |
-| GET    | `/api/ping`    | —             | Health check                       |
+| Doc | EN | 中文 |
+|---|---|---|
+| Deployment | [deploy.md](docs/deploy.md) | [deploy_zh-CN.md](docs/deploy_zh-CN.md) |
+| API Reference | [api.md](docs/api.md) | [api_zh-CN.md](docs/api_zh-CN.md) |
+| Development Guide | [dev-guide.md](docs/dev-guide.md) | [dev-guide_zh-CN.md](docs/dev-guide_zh-CN.md) |
+| Testing | [testing.md](docs/testing.md) | [testing_zh-CN.md](docs/testing_zh-CN.md) |
+| Structure | [structure.md](docs/structure.md) | [structure_zh-CN.md](docs/structure_zh-CN.md) |
