@@ -172,7 +172,7 @@ function getSessionToken(req) {
 // ─────────────────────────────────────────────
 
 /** POST /api/login */
-export async function handleLogin(req, env) {
+async function handleLogin(req, env) {
 	const ip = clientIP(req);
 	const brute = await checkBrute(env.store, ip);
 	if (brute.blocked) {
@@ -206,14 +206,14 @@ export async function handleLogin(req, env) {
 }
 
 /** POST /api/logout */
-export async function handleLogout(req, env) {
+async function handleLogout(req, env) {
 	const token = getSessionToken(req);
 	await destroySession(env.store, token);
 	return jsonResp({ ok: true });
 }
 
 /** GET /api/nodes */
-export async function handleGetNodes(req, env) {
+async function handleGetNodes(req, env) {
 	const token = getSessionToken(req);
 	if (!(await validateSession(env.store, token))) {
 		return jsonResp({ error: "Unauthorized" }, 401);
@@ -226,7 +226,7 @@ export async function handleGetNodes(req, env) {
 }
 
 /** PUT /api/nodes */
-export async function handleSaveNodes(req, env) {
+async function handleSaveNodes(req, env) {
 	const token = getSessionToken(req);
 	if (!(await validateSession(env.store, token))) {
 		return jsonResp({ error: "Unauthorized" }, 401);
@@ -255,7 +255,7 @@ export async function handleSaveNodes(req, env) {
 }
 
 /** GET /sub  — public subscription endpoint */
-export async function handleSub(req, env) {
+async function handleSub(req, env) {
 	const url = new URL(req.url);
 
 	// Token check (if SUB_TOKEN is set)
@@ -287,7 +287,7 @@ export async function handleSub(req, env) {
 }
 
 /** GET /api/sub-url  — returns the subscription URL for display */
-export async function handleSubUrl(req, env) {
+async function handleSubUrl(req, env) {
 	const token = getSessionToken(req);
 	if (!(await validateSession(env.store, token))) {
 		return jsonResp({ error: "Unauthorized" }, 401);
@@ -298,7 +298,7 @@ export async function handleSubUrl(req, env) {
 }
 
 /** GET /api/ping */
-export async function handlePing() {
+function handlePing() {
 	return jsonResp({ ok: true, ts: Date.now() });
 }
 
@@ -316,7 +316,7 @@ const VALID_SCHEMES = [
 	"tuic://",
 ];
 
-export function isValidNode(str) {
+function isValidNode(str) {
 	return VALID_SCHEMES.some((s) => str.startsWith(s));
 }
 
@@ -361,7 +361,7 @@ export async function handleRequest(req, env) {
 		return handleSubUrl(req, env);
 
 	// Serve UI for all other GET paths
-	if (method === "GET") return serveUI(req);
+	if (method === "GET") return serveUI();
 
 	return jsonResp({ error: "Not found" }, 404);
 }
@@ -369,7 +369,7 @@ export async function handleRequest(req, env) {
 // ─────────────────────────────────────────────
 //  UI
 // ─────────────────────────────────────────────
-export function serveUI() {
+function serveUI() {
 	return new Response(HTML_PAGE, {
 		headers: { "Content-Type": "text/html; charset=utf-8" },
 	});

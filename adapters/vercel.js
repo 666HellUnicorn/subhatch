@@ -64,34 +64,6 @@ function makeVercelKVStore(apiUrl, apiToken) {
 	};
 }
 
-/**
- * Fallback in-memory store for environments without KV.
- * WARNING: Not suitable for production — data resets on each cold start.
- */
-const memStore = new Map();
-function makeMemStore() {
-	return {
-		async get(key) {
-			const entry = memStore.get(key);
-			if (!entry) return null;
-			if (entry.exp && Date.now() > entry.exp) {
-				memStore.delete(key);
-				return null;
-			}
-			return entry.val;
-		},
-		async set(key, value, ttlSeconds) {
-			memStore.set(key, {
-				val: value,
-				exp: ttlSeconds ? Date.now() + ttlSeconds * 1000 : null,
-			});
-		},
-		async del(key) {
-			memStore.delete(key);
-		},
-	};
-}
-
 export default async function handler(req) {
 	const {
 		KV_REST_API_URL,
@@ -104,11 +76,14 @@ export default async function handler(req) {
 	if (!ADMIN_PASSWORD) {
 		return new Response("ADMIN_PASSWORD env var is not set.", { status: 500 });
 	}
+	if (!KV_REST_API_URL || !KV_REST_API_TOKEN) {
+		return new Response(
+			"Vercel KV is not configured. Set KV_REST_API_URL and KV_REST_API_TOKEN env vars.",
+			{ status: 500 },
+		);
+	}
 
-	const store =
-		KV_REST_API_URL && KV_REST_API_TOKEN
-			? makeVercelKVStore(KV_REST_API_URL, KV_REST_API_TOKEN)
-			: makeMemStore();
+	const store = makeVercelKVStore(KV_REST_API_URL, KV_REST_API_TOKEN);
 
 	const normalizedEnv = {
 		ADMIN_PASSWORD,
