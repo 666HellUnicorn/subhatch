@@ -5,10 +5,15 @@
 
 # vless-sub
 
-A lightweight, self-hosted subscription manager for proxy nodes.  
+A lightweight, self-hosted subscription manager for proxy nodes.
+
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 
-Deploy once, import into **husi / sing-box / NekoBox / Clash Meta / Shadowrocket** etc.
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=vless-sub&repository-name=subhatch)
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Dichgrem/subhatch)
+
+> **Vercel**: After deploy, create a Vercel KV store in the dashboard and link it — the button auto-fills `ADMIN_PASSWORD` + `SUB_TOKEN`.  
+> **Netlify**: Deploys the Node.js adapter as a serverless function. Set `ADMIN_PASSWORD` and `SUB_TOKEN` in the Netlify UI after deploy.
 
 ---
 
@@ -22,6 +27,12 @@ Deploy once, import into **husi / sing-box / NekoBox / Clash Meta / Shadowrocket
 - **Bulk import** — paste raw URIs or base64-encoded subscription content
 - **QR code** — scan subscription URL directly from the UI
 - **Zero dependencies** — plain ES Modules, no npm install needed for CF / Vercel
+- **ADMIN_PASSWORD** is never stored in plaintext — only compared via SHA-256 hash.
+- **Sessions** are random 32-byte hex tokens stored in KV with a 2-hour TTL.
+- **Brute-force protection**: after 10 failed login attempts from the same IP within 15 minutes, further attempts are blocked for the duration of the window.
+- **SUB_TOKEN** makes your subscription URL unguessable. Without it, `/sub` is public.
+- **Env-var nodes** (`VLESS_NODES`) are never written to KV — they live only in the runtime environment.
+- Sessions are stored client-side in `localStorage` and sent as a `Bearer` token — not stored in cookies, avoiding CSRF surface.
 
 ---
 
@@ -115,15 +126,36 @@ services:
 
 ---
 
+## Project Structure
+
+```
+vless-sub/
+├── src/
+│   └── core.js           # Platform-agnostic business logic + Web UI HTML
+├── adapters/
+│   ├── cloudflare.js     # Cloudflare Workers entry point
+│   ├── vercel.js         # Vercel Edge Runtime entry point
+│   └── node.js           # Node.js HTTP server
+├── api/
+│   └── index.js          # Vercel function entry (re-exports adapter)
+├── wrangler.toml         # Cloudflare Workers config
+├── vercel.json           # Vercel routing config
+├── Dockerfile
+├── justfile              # Dev commands
+└── package.json
+```
+
+---
+
 ## Environment Variables
 
 | Variable        | Required | Description                                                |
 |-----------------|----------|------------------------------------------------------------|
 | `ADMIN_PASSWORD`| ✅ Yes   | Password for the Web UI admin login                        |
-| `SUB_TOKEN`     | Optional | Secret token required to access `/sub`. Highly recommended |
-| `VLESS_NODES`   | Optional | Static nodes (pipe `\|` or newline separated). Read-only in UI |
-| `PORT`          | Optional | Node.js only. Default: `3000`                              |
-| `DATA_FILE`     | Optional | Node.js only. Path to JSON store. Default: `./data.json`   |
+| `SUB_TOKEN`     | No       | Secret token required to access `/sub`. Highly recommended |
+| `VLESS_NODES`   | No       | Static nodes (pipe `\|` or newline separated). Read-only in UI |
+| `PORT`          | No       | Node.js only. Default: `3000`                              |
+| `DATA_FILE`     | No       | Node.js only. Path to JSON store. Default: `./data.json`   |
 
 ---
 
@@ -139,53 +171,3 @@ services:
 | PUT    | `/api/nodes`   | session       | Save stored nodes (replaces all)   |
 | GET    | `/api/sub-url` | session       | Returns the full subscription URL  |
 | GET    | `/api/ping`    | —             | Health check                       |
-
----
-
-## Security Notes
-
-- **ADMIN_PASSWORD** is never stored in plaintext — only compared via SHA-256 hash.  
-- **Sessions** are random 32-byte hex tokens stored in KV with a 2-hour TTL.  
-- **Brute-force protection**: after 10 failed login attempts from the same IP within 15 minutes, further attempts are blocked for the duration of the window.  
-- **SUB_TOKEN** makes your subscription URL unguessable. Without it, `/sub` is public.  
-- **Env-var nodes** (`VLESS_NODES`) are never written to KV — they live only in the runtime environment.  
-- Sessions are stored client-side in `localStorage` and sent as a `Bearer` token — they are not stored in cookies, avoiding CSRF surface.
-
----
-
-## Supported Node Formats
-
-```
-vless://...
-vmess://...
-trojan://...
-ss://...
-ssr://...
-hysteria2://...
-hy2://...
-tuic://...
-```
-
-Bulk import also accepts base64-encoded subscription content (auto-detected).
-
----
-
-## Project Structure
-
-```
-vless-sub/
-├── src/
-│   └── core.js          # Platform-agnostic business logic + Web UI HTML
-├── adapters/
-│   ├── cloudflare.js    # Cloudflare Workers entry point
-│   ├── vercel.js        # Vercel Edge Runtime entry point
-│   └── node.js          # Node.js HTTP server
-├── api/
-│   └── index.js         # Vercel function entry (re-exports adapter)
-├── wrangler.toml        # Cloudflare Workers config
-├── vercel.json          # Vercel routing config
-├── Dockerfile
-└── package.json
-```
-
----
