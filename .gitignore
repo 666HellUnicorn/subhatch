@@ -1,3 +1,7 @@
 node_modules/
 data.json
 AGENTS.md
+
+# devenv
+.devenv/
+.direnv/
