@@ -1,23 +1,31 @@
 {
-  "type": "module",
-  "name": "vless-sub",
-  "descripti": "Lightweight self-hosted proxy subscription manager supporting multi-platform to deploy.",
-  "version": "1.0.0",
-  "license": "MIT",
-  "keywords": [
-    "vless",
-    "vmess",
-    "trojan",
-    "shadowsocks",
-    "hysteria2",
-    "tuic",
-    "subscription",
-    "proxy",
-    "cloudflare-workers",
-    "vercel"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Dichgrem/subhatch"
-  }
+	"type": "module",
+	"name": "vless-sub",
+	"version": "1.0.0",
+	"description": "Lightweight self-hosted proxy subscription manager. Multi-platform: Cloudflare Workers, Vercel, Netlify, Node.js, Docker.",
+	"license": "BSD 3-Clause License",
+	"keywords": [
+		"vless",
+		"vmess",
+		"trojan",
+		"shadowsocks",
+		"hysteria2",
+		"tuic",
+		"subscription",
+		"proxy",
+		"cloudflare-workers",
+		"vercel",
+		"netlify"
+	],
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Dichgrem/subhatch"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"start": "node adapters/node.js",
+		"test": "echo \"No tests yet\" && exit 0"
+	}
 }

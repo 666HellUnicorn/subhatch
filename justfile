@@ -5,19 +5,19 @@ default:
 
 # format JS source files with Biome
 format:
-    biome format --write adapters/ src/ api/
+    biome format --write api/ src/
 
 # check formatting and lint (no write)
 check:
-    biome check adapters/ src/ api/
+    biome check api/ src/
 
 # auto-fix formatting and lint issues
 fix:
-    biome check --write adapters/ src/ api/
+    biome check --write api/ src/
 
 # run Node.js adapter locally
 run:
-    ADMIN_PASSWORD=admin SUB_TOKEN=test node adapters/node.js
+    ADMIN_PASSWORD=admin SUB_TOKEN=test node api/node.js
 
 # build Docker image
 docker-build:

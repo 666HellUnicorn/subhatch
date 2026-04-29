@@ -14,7 +14,7 @@
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Dichgrem/subhatch)
 
 > **Vercel**：部署后在 Vercel 控制台创建 KV 存储并关联；按钮会自动预填 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
-> **Netlify**：以 Serverless Function 方式部署 Node.js 适配器。部署后在 Netlify 后台设置 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
+> **Netlify**：以 Serverless Function 方式部署。在 Netlify 后台设置 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。使用内存存储，适合个人使用。
 
 ---
 
@@ -133,13 +133,18 @@ services:
 ```
 vless-sub/
 ├── src/
-│   └── core.js           # 平台无关业务逻辑 + Web UI HTML
-├── adapters/
-│   ├── cloudflare.js     # Cloudflare Workers 入口
-│   ├── vercel.js         # Vercel Edge Runtime 入口
-│   └── node.js           # Node.js HTTP 服务器
+│   ├── core.js           # 平台无关业务逻辑
+│   └── ui.html.js        # Web UI HTML 模板
 ├── api/
-│   └── index.js          # Vercel 函数入口（重新导出适配器）
+│   ├── cloudflare.js     # Cloudflare Workers 入口
+│   ├── vercel.js         # Vercel Edge 入口
+│   ├── node.js           # Node.js HTTP 服务器
+│   ├── netlify.js        # Netlify Functions 入口
+│   └── index.js          # Vercel 重新导出
+├── netlify/
+│   └── functions/
+│       └── api.js        # 轻量重导出 → api/netlify.js
+├── netlify.toml          # Netlify 配置
 ├── wrangler.toml         # Cloudflare Workers 配置
 ├── vercel.json           # Vercel 路由配置
 ├── Dockerfile

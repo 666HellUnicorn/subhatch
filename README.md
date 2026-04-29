@@ -13,7 +13,7 @@ Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 [![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/Dichgrem/subhatch)
 
 > **Vercel**: After deploy, create a Vercel KV store in the dashboard and link it — the button auto-fills `ADMIN_PASSWORD` + `SUB_TOKEN`.  
-> **Netlify**: Deploys the Node.js adapter as a serverless function. Set `ADMIN_PASSWORD` and `SUB_TOKEN` in the Netlify UI after deploy.
+> **Netlify**: Deploys as a serverless function. Set `ADMIN_PASSWORD` and `SUB_TOKEN` in the Netlify UI. Uses in-memory storage — suitable for personal use.
 
 ---
 
@@ -131,13 +131,18 @@ services:
 ```
 vless-sub/
 ├── src/
-│   └── core.js           # Platform-agnostic business logic + Web UI HTML
-├── adapters/
-│   ├── cloudflare.js     # Cloudflare Workers entry point
-│   ├── vercel.js         # Vercel Edge Runtime entry point
-│   └── node.js           # Node.js HTTP server
+│   ├── core.js           # Platform-agnostic business logic
+│   └── ui.html.js        # Web UI HTML template
 ├── api/
-│   └── index.js          # Vercel function entry (re-exports adapter)
+│   ├── cloudflare.js     # Cloudflare Workers entry
+│   ├── vercel.js         # Vercel Edge entry
+│   ├── node.js           # Node.js HTTP server
+│   ├── netlify.js        # Netlify Functions entry
+│   └── index.js          # Vercel re-export
+├── netlify/
+│   └── functions/
+│       └── api.js        # Thin re-export → api/netlify.js
+├── netlify.toml          # Netlify config
 ├── wrangler.toml         # Cloudflare Workers config
 ├── vercel.json           # Vercel routing config
 ├── Dockerfile

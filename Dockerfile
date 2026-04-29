@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json .
 COPY src/ ./src/
-COPY adapters/node.js ./adapters/
+COPY api/node.js ./api/
 
 # Data directory for persistent JSON store
 RUN mkdir -p /data
@@ -17,4 +17,4 @@ ENV PORT=3000
 
 EXPOSE 3000
 
-CMD ["node", "adapters/node.js"]
+CMD ["node", "api/node.js"]
