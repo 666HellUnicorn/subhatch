@@ -192,10 +192,13 @@ async function handleLogin(req, env) {
 	const { password } = body || {};
 	if (!password) return jsonResp({ error: "Password required" }, 400);
 
-	const adminHash = await sha256(env.ADMIN_PASSWORD);
+	// Accept pre-hashed hex string or raw password (backward compat)
+	const ADMIN_HASH = /^[0-9a-f]{64}$/i.test(env.ADMIN_PASSWORD)
+		? env.ADMIN_PASSWORD
+		: await sha256(env.ADMIN_PASSWORD);
 	const inputHash = await sha256(password);
 
-	if (inputHash !== adminHash) {
+	if (inputHash !== ADMIN_HASH) {
 		await recordBrute(env.store, ip);
 		return jsonResp({ error: "Incorrect password" }, 401);
 	}

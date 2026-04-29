@@ -27,7 +27,7 @@ Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 - **Bulk import** — paste raw URIs or base64-encoded subscription content
 - **QR code** — scan subscription URL directly from the UI
 - **Zero dependencies** — plain ES Modules, no npm install needed for CF / Vercel
-- **ADMIN_PASSWORD** is never stored in plaintext — only compared via SHA-256 hash.
+- **ADMIN_PASSWORD** can be a pre-computed SHA-256 hex string (64 hex chars) to avoid plaintext storage — or set the raw password directly.
 - **Sessions** are random 32-byte hex tokens stored in KV with a 2-hour TTL.
 - **Brute-force protection**: after 10 failed login attempts from the same IP within 15 minutes, further attempts are blocked for the duration of the window.
 - **SUB_TOKEN** makes your subscription URL unguessable. Without it, `/sub` is public.

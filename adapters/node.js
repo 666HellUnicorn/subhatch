@@ -20,11 +20,15 @@ import http from "node:http";
 import path from "node:path";
 import { handleRequest } from "../src/core.js";
 
+const MAX_BODY = 1 * 1024 * 1024; // 1 MB
+
 // ─── File-based KV store ──────────────────────────────────────────────────────
 const DATA_FILE =
 	process.env.DATA_FILE ?? path.join(process.cwd(), "data.json");
 
 let _db = null;
+let _writeLock = null;
+
 async function loadDB() {
 	if (_db) return _db;
 	try {
@@ -37,7 +41,16 @@ async function loadDB() {
 }
 
 async function saveDB() {
-	await fs.writeFile(DATA_FILE, JSON.stringify(_db, null, 2), "utf8");
+	// Serialize writes to avoid race conditions between concurrent requests
+	const prev = _writeLock;
+	let next;
+	_writeLock = new Promise((res) => (next = res));
+	if (prev) await prev;
+	try {
+		await fs.writeFile(DATA_FILE, JSON.stringify(_db, null, 2), "utf8");
+	} finally {
+		next();
+	}
 }
 
 function makeFileStore() {
@@ -78,6 +91,7 @@ function nodeToWebRequest(req, body) {
 		if (typeof v === "string") headers.set(k, v);
 		else if (Array.isArray(v)) for (const val of v) headers.append(k, val);
 	}
+	headers.set("CF-Connecting-IP", req.socket.remoteAddress || "unknown");
 	return new Request(url, {
 		method: req.method,
 		headers,
@@ -105,9 +119,18 @@ const env = {
 };
 
 const server = http.createServer(async (req, res) => {
-	// Collect body
+	// Collect body with size limit
 	const chunks = [];
-	for await (const chunk of req) chunks.push(chunk);
+	let size = 0;
+	for await (const chunk of req) {
+		size += chunk.length;
+		if (size > MAX_BODY) {
+			res.writeHead(413, { "Content-Type": "text/plain" });
+			res.end("Payload too large");
+			return;
+		}
+		chunks.push(chunk);
+	}
 	const body = chunks.length ? Buffer.concat(chunks) : null;
 
 	const webReq = nodeToWebRequest(req, body);
