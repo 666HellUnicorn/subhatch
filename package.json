@@ -1,3 +1,23 @@
 {
-  "type": "module"
+  "type": "module",
+  "name": "vless-sub",
+  "descripti": "Lightweight self-hosted proxy subscription manager supporting multi-platform to deploy.",
+  "version": "1.0.0",
+  "license": "MIT",
+  "keywords": [
+    "vless",
+    "vmess",
+    "trojan",
+    "shadowsocks",
+    "hysteria2",
+    "tuic",
+    "subscription",
+    "proxy",
+    "cloudflare-workers",
+    "vercel"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dichgrem/subhatch"
+  }
 }
