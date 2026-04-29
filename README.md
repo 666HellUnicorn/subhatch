@@ -9,22 +9,18 @@ A lightweight, self-hosted subscription manager for proxy nodes.
 
 Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=subhatch&repository-name=subhatch)
-
-> **Vercel**：点击按钮部署后，还需在 Vercel 控制台创建 KV 数据库，将其 `KV_REST_API_URL` 和 `KV_REST_API_TOKEN` 添加为环境变量，然后重新部署。按钮仅预填了 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
-
 ---
 
 ## Features
 
-- **Multi-platform** — Cloudflare Workers, Vercel Edge, Node.js / Docker
+- **Multi-platform** — Cloudflare Workers, Node.js / Docker
 - **Web UI** — add, delete, bulk import nodes visually
 - **Secure admin** — session tokens, brute-force rate limiting (10 attempts / 15 min)
 - **Token-gated subscription** — subscription URL includes a secret token
 - **Env-var nodes** — inject static nodes without touching the UI
 - **Bulk import** — paste raw URIs or base64-encoded subscription content
 - **QR code** — scan subscription URL directly from the UI
-- **Zero dependencies** — plain ES Modules, no npm install needed for CF / Vercel
+- **Zero dependencies** — plain ES Modules, no npm install needed
 - **ADMIN_PASSWORD** can be a pre-computed SHA-256 hex string (64 hex chars) to avoid plaintext storage — or set the raw password directly.
 - **Sessions** are random 32-byte hex tokens stored in KV with a 2-hour TTL.
 - **Brute-force protection**: after 10 failed login attempts from the same IP within 15 minutes, further attempts are blocked for the duration of the window.
@@ -39,26 +35,30 @@ Supports **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**.
 ### Option A — Cloudflare Workers (recommended, free)
 
 ```bash
-# 1. Install wrangler
+# 1. Clone and enter the project
+git clone https://github.com/Dichgrem/subhatch.git
+cd subhatch
+
+# 2. Install wrangler
 npm install -g wrangler
 wrangler login
 
-# 2. Create KV namespace
+# 3. Create KV namespace
 wrangler kv namespace create VLESS_KV
 # → copy wrangler.toml.example to wrangler.toml and paste your id
 
-# 3. Deploy (creates the Worker; will 500 until secrets are set)
+# 4. Deploy (creates the Worker; will 500 until secrets are set)
 wrangler deploy api/cloudflare.js
 
-# 4. Set secrets
+# 5. Set secrets
 wrangler secret put ADMIN_PASSWORD
 wrangler secret put SUB_TOKEN        # optional but recommended
 
-# 5. (Optional) static nodes via env var
+# 6. (Optional) static nodes via env var
 # In wrangler.toml [vars]:
 # VLESS_NODES = "vless://...#MyNode1|vmess://...#MyNode2"
 
-# 6. Redeploy to apply secrets
+# 7. Redeploy to apply secrets
 wrangler deploy api/cloudflare.js
 ```
 
@@ -66,44 +66,7 @@ Visit `https://your-worker.workers.dev` → login → manage nodes.
 
 ---
 
-### Option B — Vercel Edge (free)
-
-Click the **Deploy with Vercel** button at the top of this README, or:
-
-```bash
-# 1. Install Vercel CLI
-npm install -g vercel
-vercel login
-
-# 2. Create a Vercel KV database
-#    Go to Vercel dashboard → your project → Storage → Create Database → KV
-#    Copy the REST API URL and token:
-#      KV_REST_API_URL   = https://<region>.kv.vercel-storage.com
-#      KV_REST_API_TOKEN = Axxx_xxxxxxxxxxxxxxxxxxxxx
-
-# 3. Set environment variables
-vercel env add ADMIN_PASSWORD
-# → enter your admin password
-vercel env add SUB_TOKEN
-# → enter a random secret (optional but recommended)
-vercel env add KV_REST_API_URL
-# → paste from step 2
-vercel env add KV_REST_API_TOKEN
-# → paste from step 2
-
-# 4. (Optional) static nodes
-vercel env add VLESS_NODES
-# → e.g. "vless://...#node1|vmess://...#node2"
-
-# 5. Deploy
-vercel --prod
-```
-
-Visit `https://your-project.vercel.app` → login → manage nodes.
-
----
-
-### Option C — Node.js / Docker (self-hosted VPS)
+### Option B — Node.js / Docker (self-hosted VPS)
 
 **Direct Node.js:**
 ```bash
@@ -151,11 +114,8 @@ subhatch/
 │   └── ui.html.js        # Web UI HTML template
 ├── api/
 │   ├── cloudflare.js     # Cloudflare Workers entry
-│   ├── vercel.js         # Vercel Edge entry
-│   ├── node.js           # Node.js HTTP server
-│   └── index.js          # Vercel re-export
+│   └── node.js           # Node.js HTTP server
 ├── wrangler.toml.example # Cloudflare Workers config template
-├── vercel.json           # Vercel routing config
 ├── Dockerfile
 ├── docker-compose.yml
 ├── justfile              # Dev commands

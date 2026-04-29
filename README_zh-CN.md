@@ -10,22 +10,18 @@
 
 支持 **VLESS · VMess · Trojan · Shadowsocks · Hysteria2 · TUIC**。
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Dichgrem/subhatch&env=ADMIN_PASSWORD,SUB_TOKEN&envDescription=Required%20environment%20variables&project-name=subhatch&repository-name=subhatch)
-
-> **Vercel**：点击按钮部署后，还需在 Vercel 控制台创建 KV 数据库，将其 `KV_REST_API_URL` 和 `KV_REST_API_TOKEN` 添加为环境变量，然后重新部署。按钮仅预填了 `ADMIN_PASSWORD` 和 `SUB_TOKEN`。
-
 ---
 
 ## 特性
 
-- **多平台** — Cloudflare Workers、Vercel Edge、Node.js / Docker
+- **多平台** — Cloudflare Workers、Node.js / Docker
 - **Web 管理界面** — 可视化添加、删除、批量导入节点
 - **安全管理** — 会话 Token、暴力破解限流（15 分钟内最多 10 次）
 - **Token 鉴权订阅** — 订阅地址可设置密钥访问
 - **环境变量注入节点** — 无需通过 UI 即可添加固定节点
 - **批量导入** — 支持粘贴原始 URI 或 base64 编码的订阅内容
 - **二维码** — 在 UI 中直接扫码获取订阅地址
-- **零依赖** — 纯 ES Modules，CF / Vercel 无需 npm install
+- **零依赖** — 纯 ES Modules，无需 npm install
 - **ADMIN_PASSWORD** 支持预计算 SHA-256 哈希（64 位十六进制）来避免明文存储 — 也可以直接设置原始密码。
 - **会话** 是随机 32 字节十六进制 Token，存储在 KV 中，2 小时后过期。
 - **暴力破解防护**：同一 IP 在 15 分钟内登录失败超过 10 次后，该时间窗口内将被阻止。
@@ -40,26 +36,30 @@
 ### 方案 A — Cloudflare Workers（推荐，免费）
 
 ```bash
-# 1. 安装 wrangler
+# 1. 克隆项目
+git clone https://github.com/Dichgrem/subhatch.git
+cd subhatch
+
+# 2. 安装 wrangler
 npm install -g wrangler
 wrangler login
 
-# 2. 创建 KV 命名空间
+# 3. 创建 KV 命名空间
 wrangler kv namespace create VLESS_KV
 # → 将 wrangler.toml.example 复制为 wrangler.toml 并填入 id
 
-# 3. 部署（创建 Worker；设置 secret 前会返回 500）
+# 4. 部署（创建 Worker；设置 secret 前会返回 500）
 wrangler deploy api/cloudflare.js
 
-# 4. 设置密钥
+# 5. 设置密钥
 wrangler secret put ADMIN_PASSWORD
 wrangler secret put SUB_TOKEN        # 可选，但强烈建议
 
-# 5. （可选）通过环境变量添加固定节点
+# 6. （可选）通过环境变量添加固定节点
 # 在 wrangler.toml 的 [vars] 中：
 # VLESS_NODES = "vless://...#MyNode1|vmess://...#MyNode2"
 
-# 6. 重新部署使密钥生效
+# 7. 重新部署使密钥生效
 wrangler deploy api/cloudflare.js
 ```
 
@@ -67,44 +67,7 @@ wrangler deploy api/cloudflare.js
 
 ---
 
-### 方案 B — Vercel Edge（免费）
-
-点击页面顶部的 **Deploy with Vercel** 一键部署，或手动操作：
-
-```bash
-# 1. 安装 Vercel CLI
-npm install -g vercel
-vercel login
-
-# 2. 创建 Vercel KV 数据库
-#    Vercel 控制台 → 你的项目 → Storage → Create Database → KV
-#    复制 REST API URL 和 token：
-#      KV_REST_API_URL   = https://<region>.kv.vercel-storage.com
-#      KV_REST_API_TOKEN = Axxx_xxxxxxxxxxxxxxxxxxxxx
-
-# 3. 设置环境变量
-vercel env add ADMIN_PASSWORD
-# → 输入管理员密码
-vercel env add SUB_TOKEN
-# → 输入随机密钥（可选，但强烈建议）
-vercel env add KV_REST_API_URL
-# → 粘贴步骤 2 中的 URL
-vercel env add KV_REST_API_TOKEN
-# → 粘贴步骤 2 中的 token
-
-# 4. （可选）固定节点
-vercel env add VLESS_NODES
-# → 例如 "vless://...#node1|vmess://...#node2"
-
-# 5. 部署
-vercel --prod
-```
-
-访问 `https://your-project.vercel.app` → 登录 → 管理节点。
-
----
-
-### 方案 C — Node.js / Docker（自建 VPS）
+### 方案 B — Node.js / Docker（自建 VPS）
 
 **直接运行 Node.js：**
 ```bash
@@ -153,11 +116,8 @@ subhatch/
 │   └── ui.html.js        # Web UI HTML 模板
 ├── api/
 │   ├── cloudflare.js     # Cloudflare Workers 入口
-│   ├── vercel.js         # Vercel Edge 入口
-│   ├── node.js           # Node.js HTTP 服务器
-│   └── index.js          # Vercel 重新导出
+│   └── node.js           # Node.js HTTP 服务器
 ├── wrangler.toml.example # Cloudflare Workers 配置模板
-├── vercel.json           # Vercel 路由配置
 ├── Dockerfile
 ├── docker-compose.yml
 ├── justfile              # 开发命令

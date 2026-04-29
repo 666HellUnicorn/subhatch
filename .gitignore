@@ -1,9 +1,10 @@
 node_modules/
 data.json
 AGENTS.md
+wrangler.toml
+.wrangler
+.env*.local
 
 # devenv
 .devenv/
 .direnv/
-wrangler.toml
-.wrangler
