@@ -15,8 +15,8 @@
  *   DATA_FILE        — path to JSON store, default ./data.json
  */
 
-import http from "node:http";
 import fs from "node:fs/promises";
+import http from "node:http";
 import path from "node:path";
 import { handleRequest } from "../src/core.js";
 
@@ -76,7 +76,7 @@ function nodeToWebRequest(req, body) {
 	const headers = new Headers();
 	for (const [k, v] of Object.entries(req.headers)) {
 		if (typeof v === "string") headers.set(k, v);
-		else if (Array.isArray(v)) v.forEach((val) => headers.append(k, val));
+		else if (Array.isArray(v)) for (const val of v) headers.append(k, val);
 	}
 	return new Request(url, {
 		method: req.method,
@@ -128,6 +128,6 @@ const server = http.createServer(async (req, res) => {
 server.listen(Number(PORT), () => {
 	console.log(`[vless-sub] Listening on http://0.0.0.0:${PORT}`);
 	console.log(
-		`[vless-sub] Sub URL: http://0.0.0.0:${PORT}/sub${SUB_TOKEN ? "?token=" + SUB_TOKEN : ""}`,
+		`[vless-sub] Sub URL: http://0.0.0.0:${PORT}/sub${SUB_TOKEN ? `?token=${SUB_TOKEN}` : ""}`,
 	);
 });
