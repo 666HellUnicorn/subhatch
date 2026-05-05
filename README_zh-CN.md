@@ -49,6 +49,7 @@ wrangler kv namespace create VLESS_KV
 
 # 4. 部署（创建 Worker；设置 secret 前会返回 500）
 wrangler deploy api/cloudflare.js
+# 注意Cloudflare需要绑定邮箱并开启worker
 
 # 5. 设置密钥
 wrangler secret put ADMIN_PASSWORD
