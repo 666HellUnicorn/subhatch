@@ -173,6 +173,7 @@ textarea{
   border:1px solid var(--border);
   border-radius:8px;
   padding:9px 12px;
+  cursor:pointer;
   animation:fadeUp .2s ease;
 }
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
@@ -370,7 +371,7 @@ let storedNodes = [];   // nodes from KV (editable)
 let envNodes    = [];   // nodes from env vars (read-only)
 let subUrl      = '';
 
-const SCHEMES = ['vless://','vmess://','trojan://','ss://','ssr://','hysteria2://','hy2://','tuic://'];
+const SCHEMES = ['vless://','vmess://','trojan://','ss://','ssr://','hysteria2://','hy2://','tuic://','anytls://','naive://'];
 
 // ── Boot ──
 ;(async () => {
@@ -480,6 +481,12 @@ function renderNodes() {
   if (all.length === 0) { empty.style.display = 'block'; } 
   else { empty.style.display = 'none'; }
 
+  all.sort((a, b) => {
+    const sa = SCHEMES.find(s => a.n.startsWith(s)) || "";
+    const sb = SCHEMES.find(s => b.n.startsWith(s)) || "";
+    return sa.localeCompare(sb) || a.n.localeCompare(b.n);
+  });
+
   all.forEach(({n, env}, idx) => {
     const row = document.createElement('div');
     row.className = 'node-row' + (env ? ' env-row' : '');
@@ -505,6 +512,11 @@ function renderNodes() {
       \${env ? '' : \`<button class="del-btn" onclick="delNode(\${storedNodes.indexOf(n)})" title="Remove">✕</button>\`}
     \`;
     list.appendChild(row);
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".del-btn")) return;
+      navigator.clipboard.writeText(n);
+      toast("Copied to clipboard", "ok");
+    });
   });
 
   // Stats

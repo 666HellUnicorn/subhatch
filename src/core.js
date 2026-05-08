@@ -317,6 +317,8 @@ const VALID_SCHEMES = [
 	"hysteria2://",
 	"hy2://",
 	"tuic://",
+	"anytls://",
+	"naive://",
 ];
 
 function isValidNode(str) {
