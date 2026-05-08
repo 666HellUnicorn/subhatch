@@ -9,4 +9,5 @@
 | GET    | `/api/nodes`   | session       | List env + stored nodes            |
 | PUT    | `/api/nodes`   | session       | Save stored nodes (replaces all)   |
 | GET    | `/api/sub-url` | session       | Returns the full subscription URL  |
+| PUT    | `/api/sub-token`| session       | Rotate subscription token           |
 | GET    | `/api/ping`    | —             | Health check                       |

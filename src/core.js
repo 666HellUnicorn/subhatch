@@ -14,6 +14,7 @@ const BRUTE_MAX = 10; // max attempts
 const KV_NODES_KEY = "vless:nodes";
 const KV_SESSION_PFX = "session:";
 const KV_BRUTE_PFX = "brute:";
+const KV_SUB_TOKEN_KEY = "sub:token";
 
 // ─────────────────────────────────────────────
 //  Helpers
@@ -158,6 +159,15 @@ async function saveNodes(store, nodes) {
 //  Auth helper — extracts session token from
 //  Authorization header or session cookie
 // ─────────────────────────────────────────────
+async function getSubToken(store, envToken) {
+	const raw = await store.get(KV_SUB_TOKEN_KEY);
+	return raw || envToken || "";
+}
+
+async function setSubToken(store, token) {
+	await store.set(KV_SUB_TOKEN_KEY, token);
+}
+
 function getSessionToken(req) {
 	const auth = req.headers.get("Authorization") || "";
 	if (auth.startsWith("Bearer ")) return auth.slice(7);
@@ -257,14 +267,25 @@ async function handleSaveNodes(req, env) {
 	return jsonResp({ ok: true, saved: valid.length });
 }
 
+/** PUT /api/sub-token — rotate subscription token */
+async function handleSubToken(req, env) {
+	const token = getSessionToken(req);
+	if (!(await validateSession(env.store, token))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	const newToken = randomToken(16);
+	await setSubToken(env.store, newToken);
+	return jsonResp({ token: newToken });
+}
+
 /** GET /sub  — public subscription endpoint */
 async function handleSub(req, env) {
 	const url = new URL(req.url);
+	const subToken = await getSubToken(env.store, env.SUB_TOKEN);
 
-	// Token check (if SUB_TOKEN is set)
-	if (env.SUB_TOKEN) {
+	if (subToken) {
 		const t = url.searchParams.get("token");
-		if (!t || t !== env.SUB_TOKEN) {
+		if (!t || t !== subToken) {
 			return textResp("Unauthorized", 401);
 		}
 	}
@@ -295,8 +316,9 @@ async function handleSubUrl(req, env) {
 	if (!(await validateSession(env.store, token))) {
 		return jsonResp({ error: "Unauthorized" }, 401);
 	}
+	const subToken = await getSubToken(env.store, env.SUB_TOKEN);
 	const base = new URL(req.url).origin;
-	const subPath = env.SUB_TOKEN ? `/sub?token=${env.SUB_TOKEN}` : "/sub";
+	const subPath = subToken ? `/sub?token=${subToken}` : "/sub";
 	return jsonResp({ url: base + subPath });
 }
 
@@ -364,6 +386,8 @@ export async function handleRequest(req, env) {
 		return handleSaveNodes(req, env);
 	if (path === "/api/sub-url" && method === "GET")
 		return handleSubUrl(req, env);
+	if (path === "/api/sub-token" && method === "PUT")
+		return handleSubToken(req, env);
 
 	// Serve UI for all other GET paths
 	if (method === "GET") return serveUI();

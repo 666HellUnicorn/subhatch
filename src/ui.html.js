@@ -298,6 +298,7 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
       <div class="card-label">Subscription URL</div>
       <div class="sub-url-wrap">
         <code id="sub-url-text">Loading…</code>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="rotateToken()" title="Regenerate token">🎲</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="copySubUrl()" title="Copy">⎘</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openQR()" title="QR Code">▦</button>
       </div>
@@ -607,6 +608,16 @@ async function copySubUrl() {
   } catch {
     prompt('Copy this URL:', subUrl);
   }
+}
+
+// ── Rotate sub token ──
+async function rotateToken() {
+  const { ok, data } = await api("PUT", "/api/sub-token");
+  if (!ok) { toast("Failed to rotate token", "err"); return; }
+  const base = new URL(subUrl).origin;
+  subUrl = \`\${base}/sub?token=\${data.token}\`;
+  document.getElementById("sub-url-text").textContent = subUrl;
+  toast("Token rotated", "ok");
 }
 
 // ── QR Code ──

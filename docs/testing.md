@@ -33,6 +33,7 @@ No automated test suite yet. Manual test plan below.
 - [ ] GET `/sub` without `SUB_TOKEN` → returns base64 nodes
 - [ ] GET `/sub?token=xxx` with correct token → returns base64 nodes
 - [ ] GET `/sub?token=xxx` with wrong token → 401
+- [ ] PUT `/api/sub-token` → generates new token, old token stops working
 - [ ] No nodes → empty response with `Profile-Update-Interval: 24`
 
 ### UI

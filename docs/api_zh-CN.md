@@ -9,4 +9,5 @@
 | GET    | `/api/nodes`   | session       | 列出环境变量和存储的节点    |
 | PUT    | `/api/nodes`   | session       | 保存节点（全量替换）       |
 | GET    | `/api/sub-url` | session       | 返回完整订阅地址           |
+| PUT    | `/api/sub-token`| session       | 更新订阅 Token             |
 | GET    | `/api/ping`    | —             | 健康检查                  |

@@ -46,7 +46,7 @@ PW := "admin"
 SUB := "test"
 
 # run all test recipes
-test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-sub test-logout
+test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-rotate-token test-sub test-logout
 
 # GET /api/ping — health check
 test-ping:
@@ -105,6 +105,14 @@ test-logout:
 		-d '{"password":"{{PW}}"}' | jq -r .token)
 	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq
 
+# PUT /api/sub-token — rotate token
+test-rotate-token:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s -X PUT {{BASE}}/api/sub-token -H "Authorization: Bearer $TOKEN" | jq
+
 # full integration test
 test-full:
 	#!/usr/bin/env bash
@@ -133,6 +141,18 @@ test-full:
 	echo "=== Get subscription ==="
 	curl -s "{{BASE}}/sub?token={{SUB}}"
 	echo ""
+	echo ""
+	echo "=== Rotate token ==="
+	NEW_TOKEN=$(curl -s -X PUT {{BASE}}/api/sub-token -H "Authorization: Bearer $TOKEN" | jq -r .token)
+	echo "New token: $NEW_TOKEN"
+	echo ""
+	echo "=== Get subscription (new token) ==="
+	curl -s "{{BASE}}/sub?token=$NEW_TOKEN"
+	echo ""
+	echo ""
+	echo "=== Get subscription (old token) ==="
+	STATUS=$(curl -s -o /dev/null -w "%{http_code}" "{{BASE}}/sub?token={{SUB}}")
+	echo "Old token status: $STATUS (expect 401)"
 	echo ""
 	echo "=== Logout ==="
 	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq

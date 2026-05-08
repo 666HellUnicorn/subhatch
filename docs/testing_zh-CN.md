@@ -33,6 +33,7 @@
 - [ ] GET `/sub` 不带 `SUB_TOKEN` → 返回 base64 节点
 - [ ] GET `/sub?token=xxx` 正确 token → 返回 base64 节点
 - [ ] GET `/sub?token=xxx` 错误 token → 401
+- [ ] PUT `/api/sub-token` → 生成新 token，旧 token 失效
 - [ ] 无节点 → 空响应，带 `Profile-Update-Interval: 24`
 
 ### 界面
