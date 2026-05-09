@@ -14,6 +14,8 @@ const BRUTE_MAX = 10; // max attempts
 const KV_NODES_KEY = "vless:nodes";
 const KV_SESSION_PFX = "session:";
 const KV_BRUTE_PFX = "brute:";
+const KV_SUB_TOKEN_KEY = "sub:token";
+const KV_TOKENS_KEY = "sub:tokens";
 
 // ─────────────────────────────────────────────
 //  Helpers
@@ -158,6 +160,29 @@ async function saveNodes(store, nodes) {
 //  Auth helper — extracts session token from
 //  Authorization header or session cookie
 // ─────────────────────────────────────────────
+async function getSubToken(store, envToken) {
+	const raw = await store.get(KV_SUB_TOKEN_KEY);
+	return raw || envToken || "";
+}
+
+async function setSubToken(store, token) {
+	await store.set(KV_SUB_TOKEN_KEY, token);
+}
+
+async function getTokens(store) {
+	const raw = await store.get(KV_TOKENS_KEY);
+	if (!raw) return {};
+	try {
+		return JSON.parse(raw);
+	} catch {
+		return {};
+	}
+}
+
+async function saveTokens(store, tokens) {
+	await store.set(KV_TOKENS_KEY, JSON.stringify(tokens));
+}
+
 function getSessionToken(req) {
 	const auth = req.headers.get("Authorization") || "";
 	if (auth.startsWith("Bearer ")) return auth.slice(7);
@@ -257,31 +282,74 @@ async function handleSaveNodes(req, env) {
 	return jsonResp({ ok: true, saved: valid.length });
 }
 
-/** GET /sub  — public subscription endpoint */
+/** PUT /api/sub-token — rotate subscription token */
+async function handleSubToken(req, env) {
+	const token = getSessionToken(req);
+	if (!(await validateSession(env.store, token))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	const newToken = randomToken(16);
+	await setSubToken(env.store, newToken);
+	return jsonResp({ token: newToken });
+}
+
+/** GET /sub  — public subscription endpoint, supports scoped tokens */
 async function handleSub(req, env) {
 	const url = new URL(req.url);
+	const t = url.searchParams.get("token") || "";
+	const primary = await getSubToken(env.store, env.SUB_TOKEN);
+	const scoped = await getTokens(env.store);
 
-	// Token check (if SUB_TOKEN is set)
-	if (env.SUB_TOKEN) {
-		const t = url.searchParams.get("token");
-		if (!t || t !== env.SUB_TOKEN) {
+	let allowed;
+
+	if (primary) {
+		// Private mode — token required
+		if (!t) return textResp("Unauthorized", 401);
+		if (t === primary) {
+			allowed = "all";
+		} else if (scoped[t]) {
+			allowed = scoped[t].nodes;
+		} else {
+			const ip = clientIP(req);
+			const brute = await checkBrute(env.store, ip);
+			if (brute.blocked) return textResp("Too many requests", 429);
+			await recordBrute(env.store, ip);
+			return textResp("Unauthorized", 401);
+		}
+	} else {
+		// Public mode
+		if (!t) {
+			allowed = "all";
+		} else if (scoped[t]) {
+			allowed = scoped[t].nodes;
+		} else {
+			const hasScoped = Object.keys(scoped).length > 0;
+			if (hasScoped) {
+				const ip = clientIP(req);
+				const brute = await checkBrute(env.store, ip);
+				if (brute.blocked) return textResp("Too many requests", 429);
+				await recordBrute(env.store, ip);
+			}
 			return textResp("Unauthorized", 401);
 		}
 	}
 
-	// Merge env nodes + stored nodes
 	const envNodes = parseEnvNodes(env.VLESS_NODES);
 	const stored = await getNodes(env.store);
 	const all = [...envNodes, ...stored].filter(Boolean);
 
-	if (all.length === 0) {
+	let selected;
+	if (allowed === "all") selected = all;
+	else selected = all.filter((n) => allowed.includes(n));
+
+	if (selected.length === 0) {
 		return textResp("", 200, {
 			"Content-Type": "text/plain",
 			"Profile-Update-Interval": "24",
 		});
 	}
 
-	const content = toBase64(all.join("\n"));
+	const content = toBase64(selected.join("\n"));
 	return textResp(content, 200, {
 		"Content-Type": "text/plain; charset=utf-8",
 		"Profile-Update-Interval": "24",
@@ -295,9 +363,121 @@ async function handleSubUrl(req, env) {
 	if (!(await validateSession(env.store, token))) {
 		return jsonResp({ error: "Unauthorized" }, 401);
 	}
+	const subToken = await getSubToken(env.store, env.SUB_TOKEN);
 	const base = new URL(req.url).origin;
-	const subPath = env.SUB_TOKEN ? `/sub?token=${env.SUB_TOKEN}` : "/sub";
+	const subPath = subToken ? `/sub?token=${subToken}` : "/sub";
 	return jsonResp({ url: base + subPath });
+}
+
+/** GET /api/sub-tokens — list primary + scoped tokens */
+async function handleGetTokens(req, env) {
+	const token = getSessionToken(req);
+	if (!(await validateSession(env.store, token))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	const primary = await getSubToken(env.store, env.SUB_TOKEN);
+	const tokens = await getTokens(env.store);
+	return jsonResp({ primary, tokens });
+}
+
+/** POST /api/sub-tokens — create scoped token */
+async function handleCreateToken(req, env) {
+	const token = getSessionToken(req);
+	if (!(await validateSession(env.store, token))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	let body;
+	try {
+		body = await req.json();
+	} catch {
+		return jsonResp({ error: "Invalid JSON" }, 400);
+	}
+	const name = body?.name || "";
+	const nodes = body && Array.isArray(body.nodes) ? body.nodes : [];
+	const newToken = randomToken(24);
+
+	const tokens = await getTokens(env.store);
+	tokens[newToken] = { name, nodes };
+	await saveTokens(env.store, tokens);
+
+	return jsonResp({ token: newToken, name, nodes });
+}
+
+/** PUT /api/sub-tokens — update scoped token (name, nodes) */
+async function handleUpdateToken(req, env) {
+	const session = getSessionToken(req);
+	if (!(await validateSession(env.store, session))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	let body;
+	try {
+		body = await req.json();
+	} catch {
+		return jsonResp({ error: "Invalid JSON" }, 400);
+	}
+
+	const { token, name, nodes } = body || {};
+	if (!token) return jsonResp({ error: "token required" }, 400);
+
+	const tokens = await getTokens(env.store);
+	if (!tokens[token]) return jsonResp({ error: "Token not found" }, 404);
+
+	if (name !== undefined) tokens[token].name = name;
+	if (nodes !== undefined) tokens[token].nodes = nodes;
+	await saveTokens(env.store, tokens);
+
+	return jsonResp({
+		token,
+		name: tokens[token].name,
+		nodes: tokens[token].nodes,
+	});
+}
+
+/** POST /api/sub-tokens/rotate — rotate a scoped token */
+async function handleRotateToken(req, env) {
+	const session = getSessionToken(req);
+	if (!(await validateSession(env.store, session))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	let body;
+	try {
+		body = await req.json();
+	} catch {
+		return jsonResp({ error: "Invalid JSON" }, 400);
+	}
+
+	const old = body?.token;
+	if (!old) return jsonResp({ error: "token required" }, 400);
+
+	const tokens = await getTokens(env.store);
+	if (!tokens[old]) return jsonResp({ error: "Token not found" }, 404);
+
+	const config = tokens[old];
+	const fresh = randomToken(24);
+	tokens[fresh] = config;
+	delete tokens[old];
+	await saveTokens(env.store, tokens);
+
+	return jsonResp({ token: fresh, name: config.name, nodes: config.nodes });
+}
+
+/** DELETE /api/sub-tokens — delete scoped token */
+async function handleDeleteToken(req, env) {
+	const session = getSessionToken(req);
+	if (!(await validateSession(env.store, session))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	const url = new URL(req.url);
+	const t = url.searchParams.get("token");
+	if (!t) return jsonResp({ error: "token query param required" }, 400);
+
+	const tokens = await getTokens(env.store);
+	if (!tokens[t]) return jsonResp({ error: "Token not found" }, 404);
+
+	delete tokens[t];
+	await saveTokens(env.store, tokens);
+
+	return jsonResp({ ok: true });
 }
 
 /** GET /api/ping */
@@ -317,6 +497,8 @@ const VALID_SCHEMES = [
 	"hysteria2://",
 	"hy2://",
 	"tuic://",
+	"anytls://",
+	"naive://",
 ];
 
 function isValidNode(str) {
@@ -362,6 +544,18 @@ export async function handleRequest(req, env) {
 		return handleSaveNodes(req, env);
 	if (path === "/api/sub-url" && method === "GET")
 		return handleSubUrl(req, env);
+	if (path === "/api/sub-token" && method === "PUT")
+		return handleSubToken(req, env);
+	if (path === "/api/sub-tokens" && method === "GET")
+		return handleGetTokens(req, env);
+	if (path === "/api/sub-tokens" && method === "POST")
+		return handleCreateToken(req, env);
+	if (path === "/api/sub-tokens" && method === "PUT")
+		return handleUpdateToken(req, env);
+	if (path === "/api/sub-tokens/rotate" && method === "POST")
+		return handleRotateToken(req, env);
+	if (path === "/api/sub-tokens" && method === "DELETE")
+		return handleDeleteToken(req, env);
 
 	// Serve UI for all other GET paths
 	if (method === "GET") return serveUI();

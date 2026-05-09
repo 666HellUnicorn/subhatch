@@ -1,12 +1,97 @@
 # API 参考
 
-| 方法   | 路径           | 认证          | 说明                     |
-|--------|----------------|---------------|--------------------------|
-| GET    | `/`            | —             | Web 管理界面              |
-| GET    | `/sub`         | token（可选） | Base64 订阅内容           |
-| POST   | `/api/login`   | password      | 返回会话 Token            |
-| POST   | `/api/logout`  | session       | 使会话失效                |
-| GET    | `/api/nodes`   | session       | 列出环境变量和存储的节点    |
-| PUT    | `/api/nodes`   | session       | 保存节点（全量替换）       |
-| GET    | `/api/sub-url` | session       | 返回完整订阅地址           |
-| GET    | `/api/ping`    | —             | 健康检查                  |
+## 公开接口
+
+| 方法   | 路径        | 认证      | 说明               |
+|--------|------------|-----------|--------------------|
+| GET    | `/`        | —         | Web 管理界面        |
+| GET    | `/sub`     | token     | Base64 订阅内容     |
+| GET    | `/api/ping`| —         | 健康检查            |
+
+## 管理接口（需会话）
+
+所有 `/api/*` 接口（除 `/api/ping` 外）需要会话 Token：`Authorization: Bearer <token>`。
+
+| 方法   | 路径                 | 说明                     |
+|--------|----------------------|--------------------------|
+| POST   | `/api/login`         | 返回会话 Token            |
+| POST   | `/api/logout`        | 使会话失效                |
+| GET    | `/api/nodes`         | 列出 env + 存储节点       |
+| PUT    | `/api/nodes`         | 保存节点（全量替换）      |
+| GET    | `/api/sub-url`       | 返回主订阅地址            |
+| PUT    | `/api/sub-token`     | 轮换主订阅 Token          |
+| GET    | `/api/sub-tokens`    | 列出所有 Token（主+分）   |
+| POST   | `/api/sub-tokens`         | 创建分 Token              |
+| POST   | `/api/sub-tokens/rotate` | 轮换分 Token 的值         |
+| PUT    | `/api/sub-tokens`        | 更新分 Token              |
+| DELETE | `/api/sub-tokens`        | 删除分 Token              |
+
+## 分 Token（Scoped Tokens）
+
+分 Token 用于向不同人分享不同节点。每个分 Token 包含：
+- `name` — 可选显示名称
+- `nodes` — 该 Token 可访问的节点 URI 列表
+
+使用分 Token 访问 `/sub?token=<分Token>` 时，只返回已分配的节点。
+
+**主 Token**（通过 `SUB_TOKEN` 环境变量、`sub:token` KV 键或 `/api/sub-token` 轮换设置）可访问**全部**节点。
+
+## POST /api/sub-tokens
+
+创建新的分 Token。
+
+```json
+// 请求
+{ "name": "朋友 A", "nodes": ["vless://abc@1.1.1.1:443#Tokyo"] }
+// 响应
+{ "token": "<48位十六进制>", "name": "朋友 A", "nodes": ["vless://abc@1.1.1.1:443#Tokyo"] }
+```
+
+## PUT /api/sub-tokens
+
+更新分 Token 的名称和/或节点列表。
+
+```json
+// 请求
+{ "token": "<48位十六进制>", "name": "新名称", "nodes": ["vless://..."] }
+// 响应
+{ "token": "<48位十六进制>", "name": "新名称", "nodes": ["vless://..."] }
+```
+
+## POST /api/sub-tokens/rotate
+
+轮换分 Token — 生成新的随机 Token 值，保留名称和节点配置。
+
+```
+// 请求
+{ "token": "<48位十六进制>" }
+// 响应
+{ "token": "<新的48位十六进制>", "name": "朋友 A", "nodes": ["vless://..."] }
+```
+
+## DELETE /api/sub-tokens
+
+删除分 Token。Token 通过查询参数传递。
+
+```
+DELETE /api/sub-tokens?token=<48位十六进制>
+→ { "ok": true }
+```
+
+## GET /sub — 订阅接口
+
+| 参数      | 说明                                               |
+|-----------|----------------------------------------------------|
+| `?token=` | 主 Token → 全部节点，分 Token → 仅分配的节点      |
+
+- 未设置 `SUB_TOKEN` → `/sub` 公开（返回全部节点，无需 token）
+- 已设置 `SUB_TOKEN` → `/sub` 需要 `?token=<主Token>` 获取全部节点，或 `?token=<分Token>` 获取过滤节点
+- 无效 Token 返回 `401`，计入频率限制（与登录共享：每 IP 15 分钟 10 次）
+- 响应：`Content-Type: text/plain`，Base64 编码，每行一个 URI
+
+## 频率限制
+
+- `POST /api/login`：每 IP 15 分钟内最多 10 次错误尝试
+- `GET /sub`：无效 Token 计入同一限制
+- 超过限制返回 `429 Too many requests`
+- 登录成功或有效 sub 访问清除计数

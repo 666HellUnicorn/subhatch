@@ -46,7 +46,7 @@ PW := "admin"
 SUB := "test"
 
 # run all test recipes
-test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-sub test-logout
+test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-rotate-token test-sub test-list-tokens test-create-token test-rotate-scoped-token test-scoped-sub test-delete-token test-logout
 
 # GET /api/ping — health check
 test-ping:
@@ -105,6 +105,80 @@ test-logout:
 		-d '{"password":"{{PW}}"}' | jq -r .token)
 	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq
 
+# PUT /api/sub-token — rotate token
+test-rotate-token:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s -X PUT {{BASE}}/api/sub-token -H "Authorization: Bearer $TOKEN" | jq
+
+# GET /api/sub-tokens — list all tokens
+test-list-tokens:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $TOKEN" | jq
+
+# POST /api/sub-tokens — create scoped token
+test-create-token:
+	#!/usr/bin/env bash
+	TOKEN=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	curl -s -X POST {{BASE}}/api/sub-tokens \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $TOKEN" \
+		-d '{"name":"Test Token","nodes":["vless://abc-def@1.2.3.4:443?encryption=none#Tokyo"]}' | jq
+
+# PUT /api/sub-tokens — update scoped token
+test-update-token:
+	#!/usr/bin/env bash
+	SESS=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	# Get first scoped token
+	SCOPED=$(curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $SESS" | jq -r '.tokens | keys[0]')
+	if [ "$SCOPED" = "null" ]; then echo "No scoped tokens to update"; exit 0; fi
+	curl -s -X PUT {{BASE}}/api/sub-tokens \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $SESS" \
+		-d "{\"token\":\"$SCOPED\",\"name\":\"Renamed\"}" | jq
+
+# POST /api/sub-tokens/rotate — rotate scoped token
+test-rotate-scoped-token:
+	#!/usr/bin/env bash
+	SESS=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	SCOPED=$(curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $SESS" | jq -r '.tokens | keys[0]')
+	if [ "$SCOPED" = "null" ]; then echo "No scoped tokens to rotate"; exit 0; fi
+	curl -s -X POST {{BASE}}/api/sub-tokens/rotate \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $SESS" \
+		-d "{\"token\":\"$SCOPED\"}" | jq
+
+# DELETE /api/sub-tokens — delete scoped token
+test-delete-token:
+	#!/usr/bin/env bash
+	SESS=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	SCOPED=$(curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $SESS" | jq -r '.tokens | keys[0]')
+	if [ "$SCOPED" = "null" ]; then echo "No scoped tokens to delete"; exit 0; fi
+	curl -s -X DELETE "{{BASE}}/api/sub-tokens?token=$SCOPED" \
+		-H "Authorization: Bearer $SESS" | jq
+
+# GET /sub — scoped token subscription
+test-scoped-sub:
+	#!/usr/bin/env bash
+	SESS=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	SCOPED=$(curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $SESS" | jq -r '.tokens | keys[0]')
+	if [ "$SCOPED" = "null" ]; then echo "No scoped tokens to test"; exit 0; fi
+	curl -s "{{BASE}}/sub?token=$SCOPED"
 # full integration test
 test-full:
 	#!/usr/bin/env bash
@@ -133,6 +207,36 @@ test-full:
 	echo "=== Get subscription ==="
 	curl -s "{{BASE}}/sub?token={{SUB}}"
 	echo ""
+	echo ""
+	echo "=== Create scoped token ==="
+	SCOPED=$(curl -s -X POST {{BASE}}/api/sub-tokens \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $TOKEN" \
+		-d '{"name":"Test","nodes":["vless://abc-def@1.2.3.4:443?encryption=none#Tokyo"]}' | jq -r .token)
+	echo "Scoped token: $SCOPED"
+	echo ""
+	echo "=== List tokens ==="
+	curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $TOKEN" | jq
+	echo ""
+	echo "=== Scoped sub (Tokyo node only) ==="
+	curl -s "{{BASE}}/sub?token=$SCOPED"
+	echo ""
+	echo ""
+	echo "=== Rotate token ==="
+	NEW_TOKEN=$(curl -s -X PUT {{BASE}}/api/sub-token -H "Authorization: Bearer $TOKEN" | jq -r .token)
+	echo "New token: $NEW_TOKEN"
+	echo ""
+	echo "=== Get subscription (new token) ==="
+	curl -s "{{BASE}}/sub?token=$NEW_TOKEN"
+	echo ""
+	echo ""
+	echo "=== Get subscription (old token) ==="
+	STATUS=$(curl -s -o /dev/null -w "%{http_code}" "{{BASE}}/sub?token={{SUB}}")
+	echo "Old token status: $STATUS (expect 401)"
+	echo ""
+	echo "=== Delete scoped token ==="
+	curl -s -X DELETE "{{BASE}}/api/sub-tokens?token=$SCOPED" \
+		-H "Authorization: Bearer $TOKEN" | jq
 	echo ""
 	echo "=== Logout ==="
 	curl -s -X POST {{BASE}}/api/logout -H "Authorization: Bearer $TOKEN" | jq

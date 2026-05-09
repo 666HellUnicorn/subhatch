@@ -173,6 +173,7 @@ textarea{
   border:1px solid var(--border);
   border-radius:8px;
   padding:9px 12px;
+  cursor:pointer;
   animation:fadeUp .2s ease;
 }
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
@@ -253,6 +254,36 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
 .hide-sensitive .node-name::after{content:'•••••••';position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:.72rem;color:var(--muted);letter-spacing:4px;text-indent:0}
 .hide-sensitive #sub-url-text{position:relative}
 .hide-sensitive #sub-url-text::before{content:'Hidden for screenshot';position:absolute;inset:0;display:flex;align-items:center;color:var(--muted);font-style:italic;background:var(--s0);border-radius:6px}
+
+/* ── token manager ── */
+.token-list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.token-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--s0);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;
+  justify-content:space-between;flex-wrap:wrap;
+}
+.token-info{display:flex;align-items:center;gap:8px;flex:1;min-width:0;overflow:hidden}
+.token-name-label{font-size:.74rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.token-name-label:hover{color:var(--accent)}
+.token-val{
+  font-size:.68rem;color:var(--accent);background:rgba(139,127,255,.08);
+  padding:2px 8px;border-radius:4px;cursor:pointer;white-space:nowrap;user-select:all;
+}
+.token-acts{display:flex;align-items:center;gap:4px;flex-shrink:0}
+
+/* token node selector modal */
+.token-node-check{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;margin:2px 0;
+  background:var(--s0);border:1px solid var(--border);
+  border-radius:6px;cursor:pointer;font-size:.72rem;
+}
+.token-node-check:hover{border-color:var(--accent)}
+.token-node-check:has(input:checked){border-color:var(--accent);background:rgba(139,127,255,.06)}
+.token-node-check input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;overflow:hidden}
+.token-node-check input[type=checkbox]:focus:not(:focus-visible){outline:none}
+.token-node-check input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -297,12 +328,25 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
       <div class="card-label">Subscription URL</div>
       <div class="sub-url-wrap">
         <code id="sub-url-text">Loading…</code>
+        <button class="btn btn-ghost btn-sm btn-icon" onclick="rotateToken()" title="Regenerate token">🎲</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="copySubUrl()" title="Copy">⎘</button>
         <button class="btn btn-ghost btn-sm btn-icon" onclick="openQR()" title="QR Code">▦</button>
       </div>
       <div class="field-hint">
         Import this URL into husi / sing-box / NekoBox / Clash Meta etc.<br>
         Token is embedded in the URL — keep it private.
+      </div>
+    </div>
+
+    <!-- Token Manager -->
+    <div class="card">
+      <div class="card-label">Access Tokens</div>
+      <div class="field-hint" style="margin-bottom:6px">
+        Create multiple tokens — each with its own node set. Share different nodes with different people.
+      </div>
+      <div id="token-list" class="token-list"></div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm" onclick="createToken()">+ Create Token</button>
       </div>
     </div>
 
@@ -359,6 +403,25 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
       <button class="btn btn-ghost btn-sm" onclick="document.getElementById('qr-bg').style.display='none'">Close</button>
     </div>
   </div>
+
+  <!-- ── Token node selector modal ── -->
+  <div id="token-modal-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:101;align-items:center;justify-content:center;padding:20px">
+    <div class="card" style="width:100%;max-width:640px;margin:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="card-label" style="margin:0">Assign Nodes</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="selectAllTokenNodes()">All</button>
+          <button class="btn btn-ghost btn-sm" onclick="deselectAllTokenNodes()">None</button>
+          <button class="btn btn-ghost btn-sm" onclick="closeTokenModal()">✕ Close</button>
+        </div>
+      </div>
+      <div id="token-node-selector" style="max-height:50vh;overflow-y:auto"></div>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="saveTokenNodes()">Save</button>
+        <button class="btn btn-ghost" onclick="closeTokenModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -369,8 +432,10 @@ let SESSION = localStorage.getItem('sub_session') || null;
 let storedNodes = [];   // nodes from KV (editable)
 let envNodes    = [];   // nodes from env vars (read-only)
 let subUrl      = '';
+let tokens      = {};
+let editingToken = null;
 
-const SCHEMES = ['vless://','vmess://','trojan://','ss://','ssr://','hysteria2://','hy2://','tuic://'];
+const SCHEMES = ['vless://','vmess://','trojan://','ss://','ssr://','hysteria2://','hy2://','tuic://','anytls://','naive://'];
 
 // ── Boot ──
 ;(async () => {
@@ -449,7 +514,7 @@ async function doLogout() {
 
 // ── Load data ──
 async function loadAll() {
-  await Promise.all([loadNodes(), loadSubUrl()]);
+  await Promise.all([loadNodes(), loadSubUrl(), loadTokens()]);
 }
 
 async function loadNodes() {
@@ -467,6 +532,13 @@ async function loadSubUrl() {
   document.getElementById('sub-url-text').textContent = subUrl;
 }
 
+async function loadTokens() {
+  const { ok, data } = await api('GET', '/api/sub-tokens');
+  if (!ok) return;
+  tokens = data.tokens || {};
+  renderTokens();
+}
+
 function showMain() { show('v-main'); }
 
 // ── Render nodes ──
@@ -479,6 +551,12 @@ function renderNodes() {
 
   if (all.length === 0) { empty.style.display = 'block'; } 
   else { empty.style.display = 'none'; }
+
+  all.sort((a, b) => {
+    const sa = SCHEMES.find(s => a.n.startsWith(s)) || "";
+    const sb = SCHEMES.find(s => b.n.startsWith(s)) || "";
+    return sa.localeCompare(sb) || a.n.localeCompare(b.n);
+  });
 
   all.forEach(({n, env}, idx) => {
     const row = document.createElement('div');
@@ -505,6 +583,11 @@ function renderNodes() {
       \${env ? '' : \`<button class="del-btn" onclick="delNode(\${storedNodes.indexOf(n)})" title="Remove">✕</button>\`}
     \`;
     list.appendChild(row);
+    row.addEventListener("click", (e) => {
+      if (e.target.closest(".del-btn")) return;
+      navigator.clipboard.writeText(n);
+      toast("Copied to clipboard", "ok");
+    });
   });
 
   // Stats
@@ -515,6 +598,37 @@ function renderNodes() {
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Render tokens ──
+function renderTokens() {
+  const list = document.getElementById('token-list');
+  const entries = Object.entries(tokens);
+  if (entries.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:.75rem;padding:12px 0">No access tokens yet.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(([token, config]) => {
+    const name = config.name || 'Unnamed';
+    const nodes = config.nodes || [];
+    const tokenUrl = subUrl ? \`\${new URL(subUrl).origin}/sub?token=\${token}\` : '';
+    return \`
+      <div class="token-row">
+        <div class="token-info">
+          <span class="token-name-label" onclick="editTokenName('\${token}')" title="Click to rename">\${escHtml(name)}</span>
+          <code class="token-val" onclick="copyText('\${token}');toast('Token copied','ok')" title="Click to copy">\${token.substring(0,16)}…</code>
+          <span class="badge">\${nodes.length} nodes</span>
+        </div>
+        <div class="token-acts">
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="copyText('\${tokenUrl}');toast('URL copied','ok')" title="Copy URL">⎘</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="showTokenQR('\${token}')" title="QR Code">▦</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="rotateScopedToken('\${token}')" title="Rotate">🎲</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editTokenNodes('\${token}')" title="Edit Nodes">✎</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteToken('\${token}')" title="Delete">✕</button>
+        </div>
+      </div>
+    \`;
+  }).join('');
 }
 
 // ── Add node ──
@@ -597,28 +711,163 @@ async function copySubUrl() {
   }
 }
 
-// ── QR Code ──
-async function openQR() {
-  if (!subUrl) return;
-  // Load qrcode lib on demand
-  if (!window.QRCode) {
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-      s.integrity = 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU';
-      s.crossOrigin = 'anonymous';
-      s.onload = res; s.onerror = rej;
-      document.head.appendChild(s);
+// ── Token CRUD ──
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { prompt('Copy:', text); }
+}
+
+async function createToken() {
+  const name = prompt('Token name (optional):', '');
+  if (name === null) return;
+  const { ok, data } = await api('POST', '/api/sub-tokens', { name: name || '' });
+  if (!ok) { toast('Failed to create token', 'err'); return; }
+  tokens[data.token] = { name: data.name, nodes: data.nodes };
+  renderTokens();
+  editTokenNodes(data.token);
+  toast('Token created', 'ok');
+}
+
+async function deleteToken(token) {
+  if (!confirm(\`Delete token "\${token.substring(0,8)}…"?\`)) return;
+  const { ok } = await api('DELETE', \`/api/sub-tokens?token=\${encodeURIComponent(token)}\`);
+  if (!ok) { toast('Failed to delete token', 'err'); return; }
+  delete tokens[token];
+  renderTokens();
+  toast('Token deleted', 'ok');
+}
+
+async function rotateScopedToken(oldToken) {
+  if (!confirm(\`Rotate token "\${oldToken.substring(0, 8)}…"?\`)) return;
+  const { ok, data } = await api('POST', '/api/sub-tokens/rotate', { token: oldToken });
+  if (!ok) { toast('Failed to rotate token', 'err'); return; }
+  delete tokens[oldToken];
+  tokens[data.token] = { name: data.name, nodes: data.nodes };
+  renderTokens();
+  toast('Token rotated', 'ok');
+}
+
+async function editTokenName(token) {
+  const current = tokens[token]?.name || '';
+  const name = prompt('Token name:', current);
+  if (name === null) return;
+  const { ok } = await api('PUT', '/api/sub-tokens', { token, name });
+  if (!ok) { toast('Failed to update name', 'err'); return; }
+  tokens[token].name = name;
+  renderTokens();
+  toast('Name updated', 'ok');
+}
+
+function editTokenNodes(token) {
+  editingToken = token;
+  const assigned = tokens[token]?.nodes || [];
+  const container = document.getElementById('token-node-selector');
+  const all = [...envNodes, ...storedNodes];
+
+  container.innerHTML = '';
+  if (all.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px">No nodes available. Add nodes first.</div>';
+  } else {
+    all.forEach((n) => {
+      const scheme = SCHEMES.find(s => n.startsWith(s)) || '';
+      const schemeLabel = scheme.replace('://', '');
+      let label = n;
+      try {
+        const hash = n.lastIndexOf('#');
+        if (hash !== -1) label = decodeURIComponent(n.slice(hash + 1));
+        else { const u = new URL(n); label = u.hostname + ':' + u.port; }
+      } catch {}
+
+      const labelEl = document.createElement('label');
+      labelEl.className = 'token-node-check';
+
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.setAttribute('value', n);
+      input.checked = assigned.includes(n);
+
+      const schemeSpan = document.createElement('span');
+      schemeSpan.className = 'node-scheme';
+      schemeSpan.textContent = schemeLabel;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'node-name';
+      nameSpan.textContent = label;
+
+      labelEl.appendChild(input);
+      labelEl.appendChild(schemeSpan);
+      labelEl.appendChild(nameSpan);
+      container.appendChild(labelEl);
     });
   }
+  document.getElementById('token-modal-bg').style.display = 'flex';
+}
+
+function selectAllTokenNodes() {
+  document.querySelectorAll('#token-node-selector input[type=checkbox]').forEach(cb => { cb.checked = true; });
+}
+function deselectAllTokenNodes() {
+  document.querySelectorAll('#token-node-selector input[type=checkbox]').forEach(cb => { cb.checked = false; });
+}
+function closeTokenModal() {
+  document.getElementById('token-modal-bg').style.display = 'none';
+  editingToken = null;
+}
+
+async function saveTokenNodes() {
+  const checked = [...document.querySelectorAll('#token-node-selector input[type=checkbox]:checked')]
+    .map(cb => cb.value);
+  const { ok } = await api('PUT', '/api/sub-tokens', { token: editingToken, nodes: checked });
+  if (!ok) { toast('Failed to save', 'err'); return; }
+  tokens[editingToken].nodes = checked;
+  renderTokens();
+  closeTokenModal();
+  toast('Token updated', 'ok');
+}
+
+// ── Rotate sub token ──
+async function rotateToken() {
+  const { ok, data } = await api("PUT", "/api/sub-token");
+  if (!ok) { toast("Failed to rotate token", "err"); return; }
+  const base = new URL(subUrl).origin;
+  subUrl = \`\${base}/sub?token=\${data.token}\`;
+  document.getElementById("sub-url-text").textContent = subUrl;
+  toast("Token rotated", "ok");
+}
+
+// ── QR Code ──
+async function loadQrLib() {
+  if (window.QRCode) return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.integrity = 'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU';
+    s.crossOrigin = 'anonymous';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function showQR(url) {
+  if (!url) return;
+  await loadQrLib();
   const container = document.getElementById('qr-container');
   container.innerHTML = '';
   new QRCode(container, {
-    text: subUrl,
+    text: url,
     width: 200, height: 200,
     colorDark: '#1a1a2e', colorLight: '#ffffff',
   });
   document.getElementById('qr-bg').style.display = 'flex';
+}
+
+async function openQR() {
+  await showQR(subUrl);
+}
+
+async function showTokenQR(token) {
+  const origin = new URL(subUrl).origin;
+  await showQR(\`\${origin}/sub?token=\${token}\`);
 }
 
 // ── Hide sensitive ──
@@ -644,6 +893,9 @@ document.getElementById('modal-bg').addEventListener('click', e => {
 });
 document.getElementById('qr-bg').addEventListener('click', e => {
   if (e.target === document.getElementById('qr-bg')) document.getElementById('qr-bg').style.display='none';
+});
+document.getElementById('token-modal-bg').addEventListener('click', e => {
+  if (e.target === document.getElementById('token-modal-bg')) closeTokenModal();
 });
 </script>
 </body>
