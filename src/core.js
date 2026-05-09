@@ -433,6 +433,34 @@ async function handleUpdateToken(req, env) {
 	});
 }
 
+/** POST /api/sub-tokens/rotate — rotate a scoped token */
+async function handleRotateToken(req, env) {
+	const session = getSessionToken(req);
+	if (!(await validateSession(env.store, session))) {
+		return jsonResp({ error: "Unauthorized" }, 401);
+	}
+	let body;
+	try {
+		body = await req.json();
+	} catch {
+		return jsonResp({ error: "Invalid JSON" }, 400);
+	}
+
+	const old = body?.token;
+	if (!old) return jsonResp({ error: "token required" }, 400);
+
+	const tokens = await getTokens(env.store);
+	if (!tokens[old]) return jsonResp({ error: "Token not found" }, 404);
+
+	const config = tokens[old];
+	const fresh = randomToken(24);
+	tokens[fresh] = config;
+	delete tokens[old];
+	await saveTokens(env.store, tokens);
+
+	return jsonResp({ token: fresh, name: config.name, nodes: config.nodes });
+}
+
 /** DELETE /api/sub-tokens — delete scoped token */
 async function handleDeleteToken(req, env) {
 	const session = getSessionToken(req);
@@ -524,6 +552,8 @@ export async function handleRequest(req, env) {
 		return handleCreateToken(req, env);
 	if (path === "/api/sub-tokens" && method === "PUT")
 		return handleUpdateToken(req, env);
+	if (path === "/api/sub-tokens/rotate" && method === "POST")
+		return handleRotateToken(req, env);
 	if (path === "/api/sub-tokens" && method === "DELETE")
 		return handleDeleteToken(req, env);
 

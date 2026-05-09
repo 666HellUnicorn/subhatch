@@ -280,7 +280,10 @@ hr{border:none;border-top:1px solid var(--border);margin:18px 0}
   border-radius:6px;cursor:pointer;font-size:.72rem;
 }
 .token-node-check:hover{border-color:var(--accent)}
-.token-node-check input[type=checkbox]{width:auto;margin:0;accent-color:var(--accent)}
+.token-node-check:has(input:checked){border-color:var(--accent);background:rgba(139,127,255,.06)}
+.token-node-check input[type=checkbox]{position:absolute;opacity:0;width:0;height:0;overflow:hidden}
+.token-node-check input[type=checkbox]:focus:not(:focus-visible){outline:none}
+.token-node-check input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
 </head>
 <body>
@@ -619,6 +622,7 @@ function renderTokens() {
         <div class="token-acts">
           <button class="btn btn-ghost btn-sm btn-icon" onclick="copyText('\${tokenUrl}');toast('URL copied','ok')" title="Copy URL">⎘</button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="showTokenQR('\${token}')" title="QR Code">▦</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="rotateScopedToken('\${token}')" title="Rotate">🎲</button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="editTokenNodes('\${token}')" title="Edit Nodes">✎</button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteToken('\${token}')" title="Delete">✕</button>
         </div>
@@ -731,6 +735,16 @@ async function deleteToken(token) {
   delete tokens[token];
   renderTokens();
   toast('Token deleted', 'ok');
+}
+
+async function rotateScopedToken(oldToken) {
+  if (!confirm(\`Rotate token "\${oldToken.substring(0, 8)}…"?\`)) return;
+  const { ok, data } = await api('POST', '/api/sub-tokens/rotate', { token: oldToken });
+  if (!ok) { toast('Failed to rotate token', 'err'); return; }
+  delete tokens[oldToken];
+  tokens[data.token] = { name: data.name, nodes: data.nodes };
+  renderTokens();
+  toast('Token rotated', 'ok');
 }
 
 async function editTokenName(token) {

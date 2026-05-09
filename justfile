@@ -46,7 +46,7 @@ PW := "admin"
 SUB := "test"
 
 # run all test recipes
-test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-rotate-token test-sub test-list-tokens test-create-token test-scoped-sub test-delete-token test-logout
+test-all: test-ping test-login test-login-wrong test-save-nodes test-get-nodes test-sub-url test-rotate-token test-sub test-list-tokens test-create-token test-rotate-scoped-token test-scoped-sub test-delete-token test-logout
 
 # GET /api/ping — health check
 test-ping:
@@ -145,6 +145,19 @@ test-update-token:
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer $SESS" \
 		-d "{\"token\":\"$SCOPED\",\"name\":\"Renamed\"}" | jq
+
+# POST /api/sub-tokens/rotate — rotate scoped token
+test-rotate-scoped-token:
+	#!/usr/bin/env bash
+	SESS=$(curl -s -X POST {{BASE}}/api/login \
+		-H "Content-Type: application/json" \
+		-d '{"password":"{{PW}}"}' | jq -r .token)
+	SCOPED=$(curl -s {{BASE}}/api/sub-tokens -H "Authorization: Bearer $SESS" | jq -r '.tokens | keys[0]')
+	if [ "$SCOPED" = "null" ]; then echo "No scoped tokens to rotate"; exit 0; fi
+	curl -s -X POST {{BASE}}/api/sub-tokens/rotate \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $SESS" \
+		-d "{\"token\":\"$SCOPED\"}" | jq
 
 # DELETE /api/sub-tokens — delete scoped token
 test-delete-token:
