@@ -21,9 +21,10 @@
 | GET    | `/api/sub-url`       | 返回主订阅地址            |
 | PUT    | `/api/sub-token`     | 轮换主订阅 Token          |
 | GET    | `/api/sub-tokens`    | 列出所有 Token（主+分）   |
-| POST   | `/api/sub-tokens`    | 创建分 Token              |
-| PUT    | `/api/sub-tokens`    | 更新分 Token              |
-| DELETE | `/api/sub-tokens`    | 删除分 Token              |
+| POST   | `/api/sub-tokens`         | 创建分 Token              |
+| POST   | `/api/sub-tokens/rotate` | 轮换分 Token 的值         |
+| PUT    | `/api/sub-tokens`        | 更新分 Token              |
+| DELETE | `/api/sub-tokens`        | 删除分 Token              |
 
 ## 分 Token（Scoped Tokens）
 
@@ -55,6 +56,17 @@
 { "token": "<48位十六进制>", "name": "新名称", "nodes": ["vless://..."] }
 // 响应
 { "token": "<48位十六进制>", "name": "新名称", "nodes": ["vless://..."] }
+```
+
+## POST /api/sub-tokens/rotate
+
+轮换分 Token — 生成新的随机 Token 值，保留名称和节点配置。
+
+```
+// 请求
+{ "token": "<48位十六进制>" }
+// 响应
+{ "token": "<新的48位十六进制>", "name": "朋友 A", "nodes": ["vless://..."] }
 ```
 
 ## DELETE /api/sub-tokens

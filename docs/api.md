@@ -21,9 +21,10 @@ All `/api/*` endpoints except `/api/ping` require a valid session token in the `
 | GET    | `/api/sub-url`      | Returns the primary subscription URL |
 | PUT    | `/api/sub-token`    | Rotate the primary subscription token|
 | GET    | `/api/sub-tokens`   | List all tokens (primary + scoped)   |
-| POST   | `/api/sub-tokens`   | Create a scoped token               |
-| PUT    | `/api/sub-tokens`   | Update a scoped token               |
-| DELETE | `/api/sub-tokens`   | Delete a scoped token               |
+| POST   | `/api/sub-tokens`         | Create a scoped token               |
+| POST   | `/api/sub-tokens/rotate` | Rotate a scoped token's value      |
+| PUT    | `/api/sub-tokens`        | Update a scoped token              |
+| DELETE | `/api/sub-tokens`        | Delete a scoped token              |
 
 ## Scoped tokens
 
@@ -55,6 +56,17 @@ Update a scoped token's name and/or node list.
 { "token": "<48-char-hex>", "name": "New Name", "nodes": ["vless://..."] }
 // Response
 { "token": "<48-char-hex>", "name": "New Name", "nodes": ["vless://..."] }
+```
+
+## POST /api/sub-tokens/rotate
+
+Rotate a scoped token — generates a new random token value while preserving name and node assignments.
+
+```json
+// Request
+{ "token": "<48-char-hex>" }
+// Response
+{ "token": "<new-48-char-hex>", "name": "Friend A", "nodes": ["vless://..."] }
 ```
 
 ## DELETE /api/sub-tokens
